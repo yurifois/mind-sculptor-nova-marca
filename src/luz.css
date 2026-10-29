@@ -1,0 +1,202 @@
+/* ===========================================================================
+   LUZ — a camada de luz do site.
+
+   Tres efeitos recriados a partir do huly.io, na paleta da Mind Sculptor.
+   Vale saber o que eles fazem por tras: NOS TRES o huly.io usa video
+   pre-renderizado. O feixe do hero e um hero.mp4 em mix-blend-mode:lighten;
+   o brilho em volta do card da quarta secao e um <video> blob de 1472x1056
+   posicionado atras dele. Nao da para copiar arquivo de video, e nem
+   interessaria: video nao se adapta ao tamanho do card, nao troca de cor e
+   pesa megabytes. Aqui tudo e CSS — zero download, adapta a qualquer caixa e
+   muda de cor mexendo em uma variavel.
+   =========================================================================== */
+
+/* Propriedade registrada = o navegador passa a saber que isto e um ANGULO (e
+   nao um texto qualquer), e so por isso ele consegue interpolar entre dois
+   valores. Custom property sem @property nao anima: pula direto do valor
+   velho para o novo. */
+@property --luz{syntax:"<percentage>";initial-value:93%;inherits:false}
+
+/* ---------------------------------------------------------------------------
+   1. O BOTAO
+
+   No huly.io sao DOIS pills empilhados de calc(100% + 9px), cada um com um
+   ::before de borda-gradiente em blur(2px) — o arco nitido — e um ::after em
+   blur(15px) — o halo. A segunda copia e espelhada em scaleX(-1) e entra por
+   crossfade no hover: a luz "troca de copia" e parece varrer o botao.
+
+   Faco o mesmo resultado com METADE das camadas. Em vez de duas copias
+   espelhadas, o ponto brilhante e uma variavel (--luz) e o hover transiciona
+   de 93% para 7%. A luz nao troca de copia: ela ANDA. Mais barato e mais liso.
+
+   A borda-gradiente e o truque das duas caixas de fundo: um gradiente
+   transparente no padding-box + o gradiente de verdade no border-box, com
+   border:2px solid transparent. Resultado: o gradiente aparece SO no anel da
+   borda. E o nucleo e quase branco de proposito — luz laranja em cima de
+   botao laranja desaparece; o que le como luz e a diferenca de temperatura.
+   --------------------------------------------------------------------------- */
+.ms-btn{overflow:visible}
+
+.ms-btn::before,.ms-btn::after{
+  content:'';position:absolute;z-index:-1;pointer-events:none;
+  inset:auto;left:50%;top:50%;translate:-50% -50%;transform:none;
+  border-radius:9px;
+  transition:--luz .72s cubic-bezier(.3,.72,.2,1),opacity .4s ease;
+}
+
+/* o arco nitido */
+.ms-btn::before{
+  width:calc(100% + 9px);height:calc(100% + 9px);
+  border:2px solid transparent;
+  background:linear-gradient(#0000,#0000) padding-box,
+    linear-gradient(97deg,
+      rgba(255,241,214,0)   calc(var(--luz) - 56%),
+      rgba(255,230,184,.26) calc(var(--luz) - 13%),
+      #FFF3DD               var(--luz),
+      rgba(255,241,214,0)   calc(var(--luz) + 5%)) border-box;
+  filter:blur(2px);
+}
+
+/* o halo */
+.ms-btn::after{
+  width:calc(100% + 15px);height:calc(100% + 15px);
+  border:3px solid transparent;border-radius:11px;
+  background:linear-gradient(#0000,#0000) padding-box,
+    linear-gradient(92deg,
+      rgba(215,146,11,0)   calc(var(--luz) - 62%),
+      rgba(255,178,92,.24) calc(var(--luz) - 20%),
+      #D7920B              var(--luz),
+      rgba(215,146,11,0)   calc(var(--luz) + 8%)) border-box;
+  filter:blur(15px);
+}
+
+.ms-btn:hover::before,.ms-btn:hover::after{--luz:7%}
+/* o v5 deslizava o ::before velho para fora no hover; aqui ele E o anel */
+.ms-btn:hover::before{transform:none}
+
+/* botao escuro sobre fundo creme: ali o creme nao contrasta com nada,
+   quem le como luz e o laranja saturado */
+.ms-btn-dark::after{
+  background:linear-gradient(#0000,#0000) padding-box,
+    linear-gradient(92deg,
+      rgba(185,62,6,0)   calc(var(--luz) - 62%),
+      rgba(217,95,26,.3) calc(var(--luz) - 20%),
+      #b93e06            var(--luz),
+      rgba(185,62,6,0)   calc(var(--luz) + 8%)) border-box;
+}
+
+/* ---------------------------------------------------------------------------
+   2. OS DOIS LEDS QUE CORREM NA BORDA DO CARD
+
+   Dois pontos de luz percorrendo o perimetro do card, meio ciclo de
+   diferenca entre eles. Os cards tem overflow:hidden (o zoom da foto no
+   hover depende dele), entao metade de cada borrao fica fora e o brilho
+   sangra para DENTRO, encostando na foto, em vez de para fora como no
+   huly.io. Nesta pagina fica melhor assim.
+   --------------------------------------------------------------------------- */
+/* O PRIMEIRO JEITO QUE EU TENTEI ESTAVA ERRADO, e o erro vale guardar.
+   Eu girava um conic-gradient recortado na borda. Funcionava no papel, mas
+   conic-gradient distribui ANGULO por igual -- e o olho ve COMPRIMENTO DE
+   BORDA. Num card de 276x173, os 6 graus do nucleo viravam 9px de luz no
+   meio do topo e explodiam nos cantos: a luz mudava de tamanho e de
+   velocidade o tempo todo, e no trecho reto era pequena demais para existir.
+
+   A primitiva certa nao e angulo, e PERIMETRO: `offset-path:border-box`
+   faz um elemento percorrer a caixa do pai em velocidade constante, com
+   0% no canto superior esquerdo e 100% de volta nele. Dois pontos de luz,
+   meio ciclo de diferenca entre eles -- por isso vivem sempre em lados
+   opostos e parecem trocar de posicao. Com `offset-rotate:0deg` e um borrao
+   redondo nao ha virada de esquina: a luz simplesmente dobra o canto.
+
+   De quebra ficou mais barato: antes cada quadro repintava um gradiente
+   conico e passava um blur por cima; agora o desenho e fixo e so a posicao
+   muda. */
+.led{
+  position:absolute;z-index:3;inset:0;pointer-events:none;
+  --led-dur:7.5s;--led-fase:0s;
+}
+
+.led::before,.led::after{
+  content:'';position:absolute;
+  width:clamp(98px,30%,176px);aspect-ratio:1;
+  offset-path:border-box;offset-rotate:0deg;
+  /* SOMA luz, nao cobre a foto. Luz quente por cima de um por-do-sol
+     quente desaparece quando so empilha; com `screen` ela se acende em
+     cima do que ja existe, que e como luz funciona de verdade. E o mesmo
+     motivo de o huly.io usar mix-blend-mode no feixe deles. */
+  mix-blend-mode:screen;
+  animation:ledVolta var(--led-dur) linear infinite;
+  animation-play-state:paused;
+}
+
+/* o LED branco */
+.led::before{
+  animation-delay:var(--led-fase);
+  background:radial-gradient(closest-side,
+    #FFFFFF 0%,#FFF0D8 10%,rgba(255,210,145,.62) 28%,
+    rgba(215,146,11,.2) 54%,#0000 76%);
+}
+
+/* o LED ambar, meio ciclo atras: sempre do outro lado do card */
+.led::after{
+  animation-delay:calc(var(--led-fase) - var(--led-dur) / 2);
+  background:radial-gradient(closest-side,
+    #FFF2D8 0%,#FFBE6E 11%,rgba(230,130,36,.56) 29%,
+    rgba(185,62,6,.18) 55%,#0000 78%);
+}
+
+/* So roda com a secao em cena. Laco fora de quadro e bateria queimada sem
+   ninguem olhando -- e sao sete cards, nao e de graca. */
+.work.cena-viva .led::before,.work.cena-viva .led::after,
+.vision.cena-viva .led::before,.vision.cena-viva .led::after{animation-play-state:running}
+
+/* desencontro de proposito: sete cards no mesmo compasso parecem maquina.
+   A fase entra pelos DOIS LEDs do card, entao a meia volta entre eles
+   continua intacta. */
+.work-card:nth-child(2) .led,.vision-card-2 .led{--led-fase:-2.4s}
+.work-card:nth-child(3) .led,.vision-card-3 .led{--led-fase:-4.9s}
+.work-card:nth-child(4) .led{--led-fase:-6.2s;--led-dur:8.4s}
+
+@keyframes ledVolta{to{offset-distance:100%}}
+
+/* ---------------------------------------------------------------------------
+   3. O FEIXE QUE DESCE ATE O CARD DO MANIFESTO
+
+   Antes era um fio de 2px: lia como arame, nao como luz. O feixe do huly.io
+   tem volume — um nucleo fino e quase branco dentro de um cone largo e macio
+   que abre onde a luz pousa.
+
+   Sao duas camadas de fundo no MESMO elemento, entao a coreografia (o feixe
+   descendo e passando o bastao para a borda do card) continua exatamente
+   igual: um linear-gradient de 2px no centro e o nucleo; um radial-gradient
+   ancorado em 50% 100% e o cone, abrindo para baixo.
+
+   O alinhamento: o elemento alargou mas o nucleo segue centrado em 50%, e o
+   left desconta metade da largura nova. O nucleo continua ocupando -1px a
+   +1px, em cima da borda esquerda do card, exatamente como antes.
+   --------------------------------------------------------------------------- */
+.manifesto-media{--feixe-w:clamp(92px,13vw,170px)}
+
+.mm-feixe{
+  width:var(--feixe-w);
+  left:calc(-1px - (var(--feixe-w) - 2px) / 2);
+  height:min(52vh,420px);
+}
+
+.mm-feixe::before{
+  background:
+    linear-gradient(180deg,#0000 0%,rgba(255,236,200,.16) 38%,
+      rgba(255,230,180,.8) 84%,#FFF1D2 97%,#FFF9EC 100%) 50% 0/2px 100% no-repeat,
+    radial-gradient(58% 104% at 50% 100%,
+      rgba(215,146,11,.46) 0%,rgba(215,146,11,.17) 38%,
+      rgba(185,62,6,.07) 62%,#0000 78%);
+  filter:drop-shadow(0 0 10px rgba(215,146,11,.78));
+}
+
+@media(max-width:900px){.manifesto-media{--feixe-w:clamp(64px,22vw,110px)}}
+
+@media(prefers-reduced-motion:reduce){
+  .ms-btn::before,.ms-btn::after{transition:none}
+  .led::before,.led::after{animation:none;offset-distance:18%}
+  .led::after{offset-distance:68%}
+}

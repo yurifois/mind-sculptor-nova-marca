@@ -313,17 +313,54 @@ function App(){
         gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:1}})
         /* O feixe e o brilho da borda só rodam com a seção em cena. Animação
            em laço fora de quadro é bateria queimada sem ninguém olhando. */
-        ScrollTrigger.create({trigger:'.type-manifesto',start:'top bottom',end:'bottom top',
-          onToggle:self=>document.querySelector('.type-manifesto')?.classList.toggle('cena-viva',self.isActive)})
-        const finalReveal=gsap.utils.toArray('[data-final-reveal]')
-        gsap.set(finalReveal,{opacity:0,clipPath:'inset(42% 0 42% 0 round 18px)',filter:'blur(9px) brightness(1.45) saturate(1.1)',y:18,z:-60,rotationX:10,scaleY:.86,transformPerspective:1200,transformOrigin:'50% 100%'})
-        let finalPlayed=false
-        playFinal=()=>{
-          if(finalPlayed)return
-          finalPlayed=true
-          gsap.to(finalReveal,{opacity:1,clipPath:'inset(-60% -60% -60% -60% round 0px)',filter:'blur(0px) brightness(1) saturate(1)',y:0,z:0,rotationX:0,scaleY:1,duration:.92,ease:'power4.out',stagger:.075,overwrite:'auto'})
+        /* `cena-viva` e a chave geral das animacoes em laco: o CSS deixa
+           tudo em animation-play-state:paused e so a secao em cena roda.
+           Os LEDs dos cards repintam um gradiente conico a cada quadro e
+           ainda passam por drop-shadow -- sao sete cards, nao e de graca. */
+        for(const alvo of ['.type-manifesto','.work','.vision'])
+          ScrollTrigger.create({trigger:alvo,start:'top bottom',end:'bottom top',
+            onToggle:self=>document.querySelector(alvo)?.classList.toggle('cena-viva',self.isActive)})
+        /* O FINAL EM DUAS COLUNAS, CADA UMA NO SEU TEMPO.
+           A versao anterior usava UM gatilho em `.final-v4`, e essa secao
+           tem 125svh com o conteudo encostado no topo: quando "a secao
+           entrava", o formulario ainda estava uns 800px abaixo da dobra.
+           A animacao rodava inteira fora de quadro e sobrava so o
+           resultado. Agora quem dispara e o proprio bloco que o olho
+           alcanca, nao a caixa gigante em volta dele. */
+        const cenasFinais=[]
+        const cenaFinal=(seletor,inicio,montar)=>{
+          const el=document.querySelector(seletor)
+          if(!el)return
+          const cena={tocou:false,montar}
+          cenasFinais.push(cena)
+          const tocar=()=>{if(cena.tocou)return;cena.tocou=true;montar(false)}
+          ScrollTrigger.create({trigger:el,start:inicio,once:true,onEnter:tocar,onEnterBack:tocar})
         }
-        ScrollTrigger.create({trigger:'.final-v4',start:'top 72%',onEnter:playFinal,onEnterBack:playFinal,once:true})
+
+        const finalCopia=gsap.utils.toArray('.final-v4 .final-copy [data-final-reveal]')
+        gsap.set(finalCopia,fechado(true))
+        cenaFinal('.final-v4 .final-copy','top 82%',atalho=>
+          gsap.to(finalCopia,{...aberto(true),duration:atalho?.5:.9,ease:'power4.out',
+            stagger:atalho?0:.08,overwrite:'auto'}))
+
+        /* O formulario em dois tempos no mesmo gatilho: o painel de vidro
+           materializa primeiro e os campos se escrevem dentro dele. */
+        const painelForm=document.querySelector('.contact-form')
+        const camposForm=gsap.utils.toArray('.contact-form [data-final-reveal]')
+        if(painelForm){
+          gsap.set([painelForm,...camposForm],fechado(true))
+          cenaFinal('.contact-form','top 86%',atalho=>{
+            if(atalho){gsap.to([painelForm,...camposForm],{...aberto(true),duration:.5,
+              ease:'power3.out',overwrite:'auto'});return}
+            gsap.timeline()
+              .to(painelForm,{...aberto(true),duration:.84,ease:'power4.out'})
+              .to(camposForm,{...aberto(true),duration:.76,ease:'power4.out',stagger:.065},.2)
+          })
+        }
+
+        /* A rede so forca quem ficou para tras: nunca atropela uma
+           animacao em curso, porque cada cena marca que ja tocou. */
+        playFinal=()=>{for(const c of cenasFinais){if(c.tocou)continue;c.tocou=true;c.montar(true)}}
       }
     },root)
     /* REDE DE SEGURANÇA. A entrada por transformação deixa a peça
@@ -345,11 +382,17 @@ function App(){
       if(!fechados.length)removeEventListener('scroll',rede)
     }
     const rede=()=>{clearTimeout(redeTimer);redeTimer=setTimeout(abrirPresos,420)}
+    /* A REDE DO FINAL, AGORA DEPOIS DO GATILHO E NAO ANTES. A primeira
+       versao disparava com `rect.top < innerHeight` -- um pixel da secao
+       aparecendo no rodape ja bastava. Como a secao tem 125svh com o
+       conteudo no topo, ela VENCIA o gatilho de verdade e tocava tudo
+       abaixo da dobra. Rede que chega antes do trapezista nao e rede: e o
+       chao. Agora ela so age quando o conteudo JA DEVERIA ter aberto,
+       isto e, quando o proprio bloco passou do meio da tela. */
     const finalSafety=()=>{
-      const section=document.querySelector('.final-v4')
-      if(!section)return
-      const rect=section.getBoundingClientRect()
-      if(rect.top<innerHeight&&rect.bottom>0)playFinal()
+      const alvo=document.querySelector('.contact-form')||document.querySelector('.final-v4 .final-copy')
+      if(!alvo)return
+      if(alvo.getBoundingClientRect().top<innerHeight*.55)playFinal()
     }
     addEventListener('scroll',finalSafety,{passive:true})
     addEventListener('scroll',rede,{passive:true})
@@ -376,9 +419,9 @@ function App(){
         <HeroDustMorph/>
         <div className="hero-rail"><span>MS / IMMERSIVE SYSTEM</span><span>01 — 03</span><span>BRASÍLIA · 2026</span></div><div className="hero-nav"><a href="#visao">VISÃO</a><i>/</i><a href="#servicos">SERVIÇOS</a><i>/</i><a href="#inteligencia">IA</a></div><a className="hero-scroll" href="#visao"><span>ROLE PARA EXPLORAR</span><ArrowDown size={15}/></a>
       </div></section>
-      <section className="vision vision-v4" id="visao"><div className="vision-copy" data-reveal><p className="section-label">01 / NOSSA VISÃO</p><h2>NÃO CRIAMOS<br/>PEÇAS SOLTAS.<br/><em>CRIAMOS CAMINHOS.</em></h2><p>Design, conteúdo, tecnologia e mídia trabalhando como um único ambiente — da primeira impressão até a próxima ação.</p></div><div className="vision-gallery">{visionCards.map(([src,meta,title],i)=><figure className={'vision-card vision-card-'+(i+1)} key={src} data-reveal><img src={src} alt={title}/><div className="vision-card-shade"/><figcaption><Zap size={15}/><span>{meta}</span><b>{title}</b></figcaption>{i===0&&<SignalOverlay variant="vision"/>}</figure>)}</div></section>
+      <section className="vision vision-v4" id="visao"><div className="vision-copy" data-reveal><p className="section-label">01 / NOSSA VISÃO</p><h2>NÃO CRIAMOS<br/>PEÇAS SOLTAS.<br/><em>CRIAMOS CAMINHOS.</em></h2><p>Design, conteúdo, tecnologia e mídia trabalhando como um único ambiente — da primeira impressão até a próxima ação.</p></div><div className="vision-gallery">{visionCards.map(([src,meta,title],i)=><figure className={'vision-card vision-card-'+(i+1)} key={src} data-reveal><img src={src} alt={title}/><i className="led" aria-hidden="true"/><div className="vision-card-shade"/><figcaption><Zap size={15}/><span>{meta}</span><b>{title}</b></figcaption>{i===0&&<SignalOverlay variant="vision"/>}</figure>)}</div></section>
       <section className="service-system services-v4" id="servicos"><div className="service-intro" data-reveal><p className="section-label">02 / O ECOSSISTEMA</p><h2>OITO FRENTES.<br/><em>UMA ÚNICA DIREÇÃO.</em></h2><p>Agora cada capacidade é mostrada em uso: o cliente vê o que acontece, como se conecta e qual movimento vem depois.</p></div><div className="service-layout"><div className="service-list">{services.map((service,index)=>{const Icon=service.icon;return <article className={'service-entry '+(index===activeService?'active':'')} key={service.n}><div className="service-entry-head"><span>{service.n}</span><small>{service.kicker}</small><Icon size={18}/></div><h3>{service.title}</h3><p>{service.copy}</p><div>{service.tags.map(tag=><span key={tag}>{tag}</span>)}</div><a className="ms-btn ms-btn-inline" href={whatsapp} target="_blank" rel="noreferrer"><span>CONVERSAR SOBRE ISSO</span><ArrowUpRight size={16}/></a><div className="mobile-service-art"><ServiceVisual service={service}/></div></article>})}</div><aside className="service-stage v4-stage" aria-live="polite"><div className="stage-visual" key={activeService}><ServiceVisual service={current}/></div><div className="stage-caption"><span>{current.n} / 08 · {current.kicker}</span><b>{current.title}</b><p>{current.copy}</p></div></aside></div></section>
-      <section className="work" id="trabalhos"><div className="work-head" data-reveal><p className="section-label">03 / CENAS ORIGINAIS</p><h2>A IMAGEM NÃO<br/><em>DECORA A IDEIA.</em><br/>ELA É A IDEIA.</h2></div><div className="work-grid">{scenes.map(([src,label],i)=><figure className={'work-card work-'+(i+1)} key={src} data-reveal data-tilt data-cursor="VER"><img src={src} alt={label}/><figcaption><span>0{i+1}</span><b>{label}</b><ArrowUpRight size={17}/></figcaption></figure>)}</div></section>
+      <section className="work" id="trabalhos"><div className="work-head" data-reveal><p className="section-label">03 / CENAS ORIGINAIS</p><h2>A IMAGEM NÃO<br/><em>DECORA A IDEIA.</em><br/>ELA É A IDEIA.</h2></div><div className="work-grid">{scenes.map(([src,label],i)=><figure className={'work-card work-'+(i+1)} key={src} data-reveal data-tilt data-cursor="VER"><img src={src} alt={label}/><i className="led" aria-hidden="true"/><figcaption><span>0{i+1}</span><b>{label}</b><ArrowUpRight size={17}/></figcaption></figure>)}</div></section>
       <section ref={contrastSection} className={'contrast contrast-v4 '+(contrastSolved?'is-solved':'is-problem')} id="direcao"><div className="contrast-stage"><div className="contrast-bg" key={currentContrast.image}><img className="contrast-bg-gray" src={currentContrast.image} alt=""/><img className="contrast-bg-color" src={currentContrast.image} alt=""/><div className="contrast-vignette"/></div><p className="contrast-title">04 / A DIFERENÇA NA PRÁTICA</p><div className="contrast-count"><span>0{activeContrast+1}</span><i>/</i><b>04</b><small>{contrastSolved?'COM A MIND':'SEM DIREÇÃO'}</small></div><div className="contrast-left"><small>SEM DIREÇÃO</small><h3>{currentContrast.bad}</h3></div><div className="contrast-logo" aria-hidden="true"><div className="logo-halo"/><div className="logo-rotor"><img className="logo-face logo-gray" src="/art/logo-head-gray-3d-v4.webp" alt=""/><img className="logo-face logo-color" src="/art/logo-head-color-3d-v4.webp" alt=""/></div><div className="contrast-line"/></div><div className="contrast-right"><small>COM A MIND</small><h3>{currentContrast.good}</h3><p>{currentContrast.copy}</p></div><ol className="contrast-index" aria-label="Etapas da comparação">{contrast.map((item,i)=><li key={item.bad}><button type="button" aria-current={i===activeContrast?'true':'false'} onClick={()=>goContrast(i)}><i>0{i+1}</i><span>{item.bad}</span></button></li>)}</ol><div className="contrast-instruction"><span>{contrastSolved?'RESULTADO ILUMINADO':'PROBLEMA IDENTIFICADO'}</span><i/><b>CONTINUE ROLANDO</b></div></div><div className="contrast-scroll">{contrast.flatMap((item,i)=>[<div className="contrast-step" key={`${item.bad}-problema`}><span>0{i+1}A</span></div>,<div className="contrast-step" key={`${item.bad}-solucao`}><span>0{i+1}B</span></div>])}</div></section>
       <AIStory/>
       <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
