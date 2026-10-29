@@ -272,7 +272,11 @@ body.quente .anel{width:56px;height:56px;margin:-28px 0 0 -28px;border-color:var
    --------------------------------------------------------------------- */
 h1,h2,h3,h4{font-family:var(--f-display);font-weight:400;text-transform:uppercase;
   margin:0;text-wrap:balance}
-h1{font-size:clamp(2.05rem,7.4vw,5.6rem);line-height:.92;letter-spacing:-.005em}
+/* O `min(...,9vh)` existe por causa de tela larga e baixa: a conta de
+   largura sozinha dava 89px, quatro linhas, e o titulo nao cabia na
+   altura. Sao ~5 linhas a 0.92 de entrelinha, entao 1em <= 9vh mantem o
+   bloco em menos de 42% da tela. Em tela normal o `min` nao muda nada. */
+h1{font-size:min(clamp(2.05rem,7.4vw,5.6rem),9vh);line-height:.92;letter-spacing:-.005em}
 h2{font-size:clamp(1.72rem,5vw,3.6rem);line-height:.94}
 h3{font-size:clamp(1.25rem,2vw,1.6rem);line-height:1.02}
 p{margin:0 0 1rem}
@@ -335,6 +339,11 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
 #hero{position:relative;height:var(--curso,210vh)}
 #hero .palco{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
+  /* Quando o conteudo nao cabe, centralizar joga o topo para FORA da
+     caixa — e o titulo some atras do cabecalho. `safe` desiste de
+     centralizar nessa hora e alinha pelo inicio. Navegador que nao
+     entende ignora a linha e fica com o `center` de cima. */
+  justify-content:safe center;
   /* folga de cima para o cabecalho fixo, de baixo para a dica de rolagem */
   padding:calc(var(--pad) + 62px) var(--pad) calc(var(--pad) + 62px)}
 #orbe{position:absolute;inset:0;width:100%;height:100%;z-index:0}
@@ -475,7 +484,34 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
 .svc::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
   opacity:.06;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-@media (hover:hover) and (pointer:fine){.svc:hover{--sobe:-6px}}
+/* ---------------------------------------------------------------------
+   O card vivo. Antes ele reagia a PRESENCA do ponteiro: entrou, sobe 6px,
+   fim. Duas camadas o fazem reagir ao MOVIMENTO:
+
+   1. a luz quente mora na posicao do dedo (`--mx`/`--my`), entao andar
+      dentro do card muda o card — e e a mesma luz unica e quente do
+      manual, nao um brilho generico;
+   2. um fio de corrente atravessa a borda de cima na chegada — a mesma
+      linguagem da placa da secao de IA, na escala do card.
+
+   Ambas valem so em ponteiro fino: no dedo nao existe "passar por cima",
+   e deixar isso ligado no celular so queima bateria.
+   --------------------------------------------------------------------- */
+.svc > *{position:relative;z-index:1}
+.svc::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  border-radius:inherit;opacity:0;transition:opacity .34s linear;
+  background:radial-gradient(220px circle at var(--mx,50%) var(--my,0%),
+    rgba(241,208,138,.18), rgba(241,208,138,.05) 42%, transparent 68%)}
+.svc__fio{position:absolute;left:0;top:0;height:2px;width:100%;z-index:2;
+  pointer-events:none;opacity:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,var(--latao-luz) 50%,transparent)}
+@keyframes svcFio{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+@media (hover:hover) and (pointer:fine){
+  .svc:hover{--sobe:-6px}
+  .svc:hover::before{opacity:1}
+  .svc:hover .svc__fio{opacity:1;animation:svcFio 1.05s var(--ease-out)}
+}
 .svc:hover,.svc:focus-within{
   box-shadow:
     inset 1px 1px 0 rgba(241,208,138,.6),
@@ -626,6 +662,70 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
 /* ---------------------------------------------------------------------
    IA — barras de antes × depois
    --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   A PLACA — a cena animada que leva corrente ate o chip "IA".
+
+   Por que SVG com `stroke-dashoffset` e nao canvas: a corrente que anda
+   na trilha e exatamente um tracejado deslizando sobre um caminho. O
+   navegador faz isso na GPU, sem laco de JavaScript, sem custo por
+   quadro. Catorze trilhas animando custam o mesmo que zero.
+
+   O truque que faz as catorze andarem no mesmo compasso: `pathLength="100"`
+   em todas. Sem isso cada trilha teria o comprimento real dela e a
+   faisca de uma trilha curta chegaria antes — com `pathLength` o
+   navegador reescala tudo para 100 unidades e a chegada vira questao
+   de `animation-delay`, nao de geometria.
+
+   A animacao fica PARADA ate a seccao entrar (`animation-play-state`).
+   Cena que ja terminou antes de voce chegar nao e cena.
+   --------------------------------------------------------------------- */
+.pcb{margin:0 0 clamp(36px,6vh,72px);position:relative;overflow:hidden;
+  height:clamp(230px,30vw,380px);background:#120D0B;
+  border-block:1px solid rgba(185,138,62,.22)}
+.pcb svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.pcb__grade{stroke:rgba(185,138,62,.1);stroke-width:1}
+.pcb__trilha{fill:none;stroke:var(--latao-escuro);stroke-width:2.5;
+  stroke-linecap:round;stroke-linejoin:round}
+.pcb__faisca{fill:none;stroke:var(--latao-luz);stroke-width:2.5;
+  stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:13 87;stroke-dashoffset:100;
+  filter:url(#brilhoPcb);
+  animation:pcbCorre 3.1s linear infinite var(--d,0s);
+  animation-play-state:paused}
+.pcb.in .pcb__faisca,.pcb.in .pcb__nucleo,.pcb.in .pcb__via{animation-play-state:running}
+@keyframes pcbCorre{
+  0%   {stroke-dashoffset:100;opacity:0}
+  8%   {opacity:1}
+  86%  {opacity:1}
+  100% {stroke-dashoffset:0;opacity:0}
+}
+
+.pcb__pastilha{fill:#1E1613;stroke:var(--latao);stroke-width:1.5}
+.pcb__perna{stroke:var(--latao);stroke-width:3;stroke-linecap:round}
+.pcb__nucleo{fill:var(--ambar);opacity:.1;
+  animation:pcbPulso 3.1s ease-in-out infinite;animation-play-state:paused}
+@keyframes pcbPulso{0%,54%{opacity:.08}72%{opacity:.42}100%{opacity:.08}}
+
+.pcb__rotulo{font-family:var(--f-display);fill:var(--areia);font-size:52px;
+  letter-spacing:2px;text-anchor:middle;dominant-baseline:central}
+.pcb__serigrafia{font-family:var(--f-util);font-weight:600;fill:var(--latao);
+  font-size:11px;letter-spacing:2.4px;opacity:.5}
+
+.pcb__via{fill:var(--latao-escuro);stroke:var(--latao);stroke-width:1;
+  animation:pcbVia 3.1s ease-in-out infinite var(--d,0s);animation-play-state:paused}
+@keyframes pcbVia{0%,40%{fill:var(--latao-escuro)}52%{fill:var(--latao-luz)}70%,100%{fill:var(--latao-escuro)}}
+
+/* A placa segue o ponteiro de leve — parallax de 2 camadas, sem hover,
+   sem escala. O deslocamento e minusculo de proposito: a 1200px de
+   largura, 14px ja da profundidade e nao da enjoo. */
+.pcb__campo{transition:transform .5s var(--ease-out)}
+
+@media (max-width:760px){
+  .pcb__rotulo{font-size:64px}
+  .pcb__serigrafia{display:none}
+}
+
 .ia{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(32px,5vw,72px);align-items:start}
 .checks{list-style:none;margin:1.8rem 0 0;padding:0;display:grid;gap:.85rem}
 .checks li{display:grid;grid-template-columns:auto 1fr;gap:.8rem;align-items:start;
@@ -886,6 +986,11 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
   .conf__par{opacity:1!important;pointer-events:auto!important;transform:none!important;
     filter:none!important;margin-bottom:clamp(36px,6vh,64px)}
   .fio{transform:none!important}
+  /* a placa nao corre: ela fica acesa. Cena parada ainda e cena. */
+  .pcb__faisca,.pcb__nucleo,.pcb__via{animation:none!important}
+  .pcb__faisca{stroke-dasharray:none;stroke-dashoffset:0;opacity:.55}
+  .svc__fio{display:none}
+  .svc::before{display:none}
   #orbe,.aura,.dica{display:none}
   .acende .w{opacity:1!important}
   .hero-olho{opacity:.8;transform:none}
@@ -1015,6 +1120,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
        aria-label="Serviços — arraste para o lado ou use as setas do teclado">
     <div class="trilho__pista" id="pista">
       <article class="svc rv" style="--i:0">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">01</span>
         <h3>Criação de conteúdo</h3>
         <p>Roteiro, copy, foto, vídeo e edição. Conteúdo pensado para parar o dedo, educar e vender — não só para preencher calendário.</p>
@@ -1023,6 +1129,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:1">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">02</span>
         <h3>Gestão de redes sociais</h3>
         <p>Planejamento mensal, publicação, legendas, hashtags, stories e resposta a comentários. Presença constante com identidade e propósito.</p>
@@ -1031,6 +1138,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:2">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">03</span>
         <h3>Design premium</h3>
         <p>Identidade visual, papelaria, embalagem, apresentações e artes de campanha. O nível visual que faz seu preço fazer sentido.</p>
@@ -1039,6 +1147,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:3">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">04</span>
         <h3>Sites e landing pages</h3>
         <p>Páginas rápidas, responsivas e construídas para converter. Copy persuasiva, estrutura inteligente e foco total no botão que importa.</p>
@@ -1047,6 +1156,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:4">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">05</span>
         <h3>Criação de aplicativos</h3>
         <p>Do app de fidelidade ao sistema interno que resolve sua operação. Tecnologia sob medida, integrada ao seu marketing.</p>
@@ -1055,6 +1165,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:5">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">06</span>
         <h3>Tráfego pago</h3>
         <p>Campanhas estruturadas em Google, Meta, YouTube e TikTok. Público certo, criativo testado e verba acompanhada de perto, todo dia.</p>
@@ -1063,6 +1174,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:6">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">07</span>
         <h3>Tráfego orgânico</h3>
         <p>SEO, Google Meu Negócio e conteúdo que trabalha por você depois de publicado. O ativo que reduz sua dependência de anúncio.</p>
@@ -1071,6 +1183,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </article>
 
       <article class="svc rv" style="--i:7">
+        <i class="svc__fio" aria-hidden="true"></i>
         <span class="svc__n" aria-hidden="true">08</span>
         <h3>Treinamos sua equipe em IA</h3>
         <p>Não entregamos só o resultado: treinamos o seu time para produzir com inteligência artificial no dia a dia — conteúdo, atendimento, criativos e processos.</p>
@@ -1178,6 +1291,110 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
 
 <!-- ======================= IA ======================= -->
 <section id="ia" data-tema="escuro" style="padding-block:var(--sec-y)">
+  <!-- A PLACA: a corrente sai das bordas e chega no chip. Ver a nota no CSS
+       sobre pathLength e sobre por que isto nao e canvas. -->
+  <figure class="pcb rv" role="img"
+          aria-label="Placa de circuito com a corrente percorrendo as trilhas ate um chip marcado I A.">
+    <svg viewBox="0 0 1200 380" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <filter id="brilhoPcb" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3.5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <pattern id="gradePcb" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path class="pcb__grade" d="M40 0 V40 M0 40 H40"/>
+        </pattern>
+        <radialGradient id="halaPcb" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stop-color="#D7920B" stop-opacity=".30"/>
+          <stop offset="1" stop-color="#D7920B" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect width="1200" height="380" fill="url(#gradePcb)"/>
+      <ellipse cx="600" cy="190" rx="430" ry="240" fill="url(#halaPcb)"/>
+
+      <g class="pcb__campo">
+      <path class="pcb__trilha" d="M0 30 H150 L210 90 H400 L440 130 H520"/>
+      <path class="pcb__trilha" d="M0 95 H250 L290 135 H460 L485 160 H520"/>
+      <path class="pcb__trilha" d="M0 190 H520"/>
+      <path class="pcb__trilha" d="M0 285 H250 L290 245 H460 L485 220 H520"/>
+      <path class="pcb__trilha" d="M0 350 H150 L210 290 H400 L440 250 H520"/>
+      <path class="pcb__trilha" d="M1200 30 H1050 L990 90 H800 L760 130 H680"/>
+      <path class="pcb__trilha" d="M1200 95 H950 L910 135 H740 L715 160 H680"/>
+      <path class="pcb__trilha" d="M1200 190 H680"/>
+      <path class="pcb__trilha" d="M1200 285 H950 L910 245 H740 L715 220 H680"/>
+      <path class="pcb__trilha" d="M1200 350 H1050 L990 290 H800 L760 250 H680"/>
+      <path class="pcb__trilha" d="M420 0 V50 L480 110 H560"/>
+      <path class="pcb__trilha" d="M780 0 V50 L720 110 H640"/>
+      <path class="pcb__trilha" d="M420 380 V330 L480 270 H560"/>
+      <path class="pcb__trilha" d="M780 380 V330 L720 270 H640"/>
+
+      <line class="pcb__perna" x1="505" y1="130" x2="520" y2="130"/>
+      <line class="pcb__perna" x1="680" y1="130" x2="695" y2="130"/>
+      <line class="pcb__perna" x1="505" y1="160" x2="520" y2="160"/>
+      <line class="pcb__perna" x1="680" y1="160" x2="695" y2="160"/>
+      <line class="pcb__perna" x1="505" y1="190" x2="520" y2="190"/>
+      <line class="pcb__perna" x1="680" y1="190" x2="695" y2="190"/>
+      <line class="pcb__perna" x1="505" y1="220" x2="520" y2="220"/>
+      <line class="pcb__perna" x1="680" y1="220" x2="695" y2="220"/>
+      <line class="pcb__perna" x1="505" y1="250" x2="520" y2="250"/>
+      <line class="pcb__perna" x1="680" y1="250" x2="695" y2="250"/>
+      <line class="pcb__perna" x1="560" y1="95" x2="560" y2="110"/>
+      <line class="pcb__perna" x1="560" y1="270" x2="560" y2="285"/>
+      <line class="pcb__perna" x1="600" y1="95" x2="600" y2="110"/>
+      <line class="pcb__perna" x1="600" y1="270" x2="600" y2="285"/>
+      <line class="pcb__perna" x1="640" y1="95" x2="640" y2="110"/>
+      <line class="pcb__perna" x1="640" y1="270" x2="640" y2="285"/>
+
+      <path class="pcb__faisca" pathLength="100" style="--d:0s" d="M0 30 H150 L210 90 H400 L440 130 H520"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:.42s" d="M0 95 H250 L290 135 H460 L485 160 H520"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:.84s" d="M0 190 H520"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:1.26s" d="M0 285 H250 L290 245 H460 L485 220 H520"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:1.68s" d="M0 350 H150 L210 290 H400 L440 250 H520"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:.21s" d="M1200 30 H1050 L990 90 H800 L760 130 H680"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:.63s" d="M1200 95 H950 L910 135 H740 L715 160 H680"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:1.05s" d="M1200 190 H680"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:1.47s" d="M1200 285 H950 L910 245 H740 L715 220 H680"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:1.89s" d="M1200 350 H1050 L990 290 H800 L760 250 H680"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:2.1s" d="M420 0 V50 L480 110 H560"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:2.31s" d="M780 0 V50 L720 110 H640"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:2.52s" d="M420 380 V330 L480 270 H560"/>
+      <path class="pcb__faisca" pathLength="100" style="--d:2.73s" d="M780 380 V330 L720 270 H640"/>
+
+      <circle class="pcb__via" cx="210" cy="90" r="4.5" style="--d:0s"/>
+      <circle class="pcb__via" cx="440" cy="130" r="4.5" style="--d:0s"/>
+      <circle class="pcb__via" cx="290" cy="135" r="4.5" style="--d:.42s"/>
+      <circle class="pcb__via" cx="300" cy="190" r="4.5" style="--d:.84s"/>
+      <circle class="pcb__via" cx="290" cy="245" r="4.5" style="--d:1.26s"/>
+      <circle class="pcb__via" cx="210" cy="290" r="4.5" style="--d:1.68s"/>
+      <circle class="pcb__via" cx="440" cy="250" r="4.5" style="--d:1.68s"/>
+      <circle class="pcb__via" cx="990" cy="90" r="4.5" style="--d:.21s"/>
+      <circle class="pcb__via" cx="760" cy="130" r="4.5" style="--d:.21s"/>
+      <circle class="pcb__via" cx="910" cy="135" r="4.5" style="--d:.63s"/>
+      <circle class="pcb__via" cx="900" cy="190" r="4.5" style="--d:1.05s"/>
+      <circle class="pcb__via" cx="910" cy="245" r="4.5" style="--d:1.47s"/>
+      <circle class="pcb__via" cx="990" cy="290" r="4.5" style="--d:1.89s"/>
+      <circle class="pcb__via" cx="760" cy="250" r="4.5" style="--d:1.89s"/>
+      <circle class="pcb__via" cx="420" cy="50" r="4.5" style="--d:2.1s"/>
+      <circle class="pcb__via" cx="780" cy="50" r="4.5" style="--d:2.31s"/>
+      <circle class="pcb__via" cx="420" cy="330" r="4.5" style="--d:2.52s"/>
+      <circle class="pcb__via" cx="780" cy="330" r="4.5" style="--d:2.73s"/>
+
+        <!-- o chip -->
+        <rect class="pcb__pastilha" x="520" y="110" width="160" height="160" rx="10"/>
+        <rect class="pcb__nucleo" x="520" y="110" width="160" height="160" rx="10"/>
+        <rect x="536" y="126" width="128" height="128" rx="6"
+              fill="none" stroke="#6E4F22" stroke-width="1"/>
+        <text class="pcb__rotulo" x="600" y="192">IA</text>
+
+        <text class="pcb__serigrafia" x="26" y="30">MIND&#160;SCULPTOR</text>
+        <text class="pcb__serigrafia" x="26" y="366">MS&#8211;AI&#160;/&#160;REV&#160;04</text>
+        <text class="pcb__serigrafia" x="1174" y="30" text-anchor="end">NUCLEO&#160;ABERTO</text>
+        <text class="pcb__serigrafia" x="1174" y="366" text-anchor="end">SEM&#160;SEGREDO</text>
+      </g>
+    </svg>
+  </figure>
+
   <div class="shell">
     <div class="ia">
       <div>
@@ -1533,6 +1750,35 @@ if (acendem.length) {
      vez de continuar marcando um par, senão a classe `.vivo` brigaria
      com a pilha do celular.
    ========================================================================== */
+/* ==========================================================================
+   O PONTEIRO DA VIDA AS DUAS CENAS.
+   Os dois laços são `pointermove` passivo com escrita de variável CSS —
+   nada de layout, nada de rAF. A conta é uma divisão por quadro de mouse.
+   ========================================================================== */
+if (!reduz && fino && matchMedia('(hover:hover)').matches) {
+  for (const card of $$('.svc')) {
+    card.addEventListener('pointermove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width  * 100).toFixed(1) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100).toFixed(1) + '%');
+    }, { passive: true });
+  }
+
+  /* A placa anda contra o ponteiro: 16px num campo de 1200 é pouco de
+     propósito. Paralaxe grande numa cena técnica dá enjoo e denuncia o
+     truque; o suficiente é o olho sentir que há profundidade. */
+  const placa = $('.pcb'), campo = $('.pcb__campo');
+  if (placa && campo) {
+    placa.addEventListener('pointermove', e => {
+      const r = placa.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - .5;
+      const y = (e.clientY - r.top) / r.height - .5;
+      campo.style.transform = `translate(${(x * -16).toFixed(1)}px,${(y * -10).toFixed(1)}px)`;
+    }, { passive: true });
+    placa.addEventListener('pointerleave', () => { campo.style.transform = ''; });
+  }
+}
+
 const conf = $('#confronto');
 if (conf) {
   const pares = $$('.conf__par', conf);
