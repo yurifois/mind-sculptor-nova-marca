@@ -229,8 +229,11 @@ body.quente .anel{width:56px;height:56px;margin:-28px 0 0 -28px;border-color:var
 .hd.fixo.sobre-areia{background:rgba(222,196,163,.82);border-bottom-color:rgba(26,19,16,.14);color:var(--tinta)}
 .hd .marca{display:flex;align-items:center;gap:.5rem;font-family:var(--f-display);
   font-size:1.18rem;letter-spacing:.02em;text-transform:uppercase;text-decoration:none;margin-right:auto}
-.hd .marca i{width:11px;height:11px;background:var(--laranja);transform:rotate(45deg);
-  box-shadow:0 0 12px rgba(185,62,6,.6)}
+.hd .marca img{height:30px;width:auto;display:block;
+  filter:drop-shadow(0 0 10px rgba(215,146,11,.45))}
+/* Sobre areia o laranja da logo perde forca (fundo claro, tinta clara).
+   Fechar o brilho e aprofundar a cor devolve a leitura sem repintar a marca. */
+.hd.sobre-areia .marca img{filter:saturate(1.15) brightness(.72) contrast(1.08)}
 .hd .marca span{opacity:.55}
 .hd nav{display:flex;gap:1.5rem}
 .hd nav a{font-family:var(--f-util);font-weight:600;font-size:.84rem;letter-spacing:.14em;
@@ -326,8 +329,11 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
    rolagem: a regra de 1 segundo do manual (secao 03) exige que o H1 seja
    impossivel de ignorar de imediato, e titulo que depende de rolagem nao
    cumpre isso. A rolagem ficou livre para o resto da pagina. */
-#hero{position:relative;min-height:100svh}
-#hero .palco{position:relative;min-height:100svh;overflow:hidden;isolation:isolate;
+/* A secao e alta e o palco gruda: e esse trecho de rolagem que a esfera
+   usa para virar a logo. So o HEROI faz isso — o resto do site continua
+   sendo secoes empilhadas normais. */
+#hero{position:relative;height:var(--curso,210vh)}
+#hero .palco{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   /* folga de cima para o cabecalho fixo, de baixo para a dica de rolagem */
   padding:calc(var(--pad) + 62px) var(--pad) calc(var(--pad) + 62px)}
@@ -335,6 +341,18 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
 .aura{position:absolute;inset:0;z-index:-1;
   background:radial-gradient(42% 42% at 62% 46%,rgba(215,146,11,.17),transparent 68%),
              radial-gradient(70% 60% at 50% 100%,rgba(185,62,6,.1),transparent 70%)}
+/* ---------------------------------------------------------------------
+   TEXTO QUE ACENDE PALAVRA POR PALAVRA
+   Do site de referencia. A frase nao aparece: ela ja esta la, inteira e
+   legivel — o que corre por ela e o FOCO.
+   O apagado e .56 e nunca menos. Com .3 fica bonito e da 3,4:1: texto que
+   depende de rolagem para ficar legivel e falha de acessibilidade, nao
+   efeito. Em .56 da 5,2:1 e o contraste entre apagado e aceso continua
+   obvio.
+   --------------------------------------------------------------------- */
+.acende .w{opacity:.56;transition:opacity .3s linear,color .3s linear}
+.acende .w.viva{opacity:1;color:var(--texto)}
+
 .vinheta{position:absolute;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(120% 90% at 50% 45%,transparent 48%,rgba(10,7,6,.72) 100%)}
 
@@ -358,12 +376,24 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
 @media (min-width:981px){
   #hero .palco{align-items:flex-start}
   .hero-olho,.hero-corpo{text-align:left}
-  .hero-corpo h1{max-width:62%}
+  /* margin:0 auto continua centralizando a CAIXA do titulo; o texto e que
+     e alinhado a esquerda. Sem zerar a margem, encolher max-width so empurra
+     o titulo para a direita, direto contra a peca de vidro. */
+  .hero-corpo h1{max-width:56%;margin-inline:0}
   .hero-corpo .sub{max-width:44ch;margin-inline:0}
   .hero-cta{justify-content:flex-start}
 }
-/* no celular a esfera nao tem para onde sair: ela recua virando atmosfera */
-@media (max-width:980px){#orbe{opacity:.42}}
+/* No celular nao ha espaco ao lado do texto. Em vez de empilhar os dois,
+   a tela e de um por vez: enquanto o texto manda a poeira e atmosfera;
+   quando a marca se forma, o texto sai de cena. Rolando de volta ele
+   volta — a troca e reversivel, nao um ponto sem retorno. */
+@media (max-width:980px){
+  #hero{--curso:190vh}
+  .hero-corpo{transition:opacity .35s linear,transform .35s var(--ease-out)}
+  .palco.marca-manda .hero-corpo{opacity:0;transform:translateY(-34px);pointer-events:none}
+  .palco.marca-manda .hero-olho{opacity:0}
+}
+
 
 .dica{position:absolute;bottom:2.2vh;left:0;right:0;text-align:center;z-index:3;margin:0;
   font-family:var(--f-util);font-size:clamp(.66rem,2.1vw,.76rem);letter-spacing:.2em;
@@ -411,21 +441,30 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
    latão no lado da luz, sombra de contato quente), mas não a encenação:
    oito objetos iluminados seriam oito focos competindo (rejeição 03).
    --------------------------------------------------------------------- */
+/* A galeria em perspectiva do site de referencia: as fichas longe do centro
+   se afastam e viram de lado. O Z sai de --dist AO QUADRADO porque o
+   afastamento tem que ser igual dos dois lados — e o sinal do angulo e que
+   diz para que lado a ficha vira. */
 .trilho{margin-top:2.4rem;overflow:hidden;cursor:grab;touch-action:pan-y;
+  perspective:1500px;perspective-origin:50% 44%;
   /* o overflow corta a sombra: abre espaço para ela e puxa de volta com margem */
   padding-block:40px 60px;margin-block:-16px -40px;
   -webkit-mask:linear-gradient(90deg,transparent,#000 3.5%,#000 96.5%,transparent);
           mask:linear-gradient(90deg,transparent,#000 3.5%,#000 96.5%,transparent)}
 .trilho.puxando{cursor:grabbing}
-.trilho.puxando .svc{transition:box-shadow .45s}
-.trilho__pista{display:flex;gap:24px;will-change:transform;
+/* enquanto o trilho anda, transicao de transform vira borrao: so a sombra
+   continua com amortecimento */
+.trilho.puxando .svc,.trilho.movendo .svc{transition:box-shadow .45s}
+.trilho__pista{display:flex;gap:24px;will-change:transform;transform-style:preserve-3d;
   padding-inline:max(var(--pad),calc((100vw - var(--shell))/2 + var(--pad)))}
 
 .svc{position:relative;flex:0 0 min(80vw,300px);display:flex;flex-direction:column;
   padding:1.5rem 1.4rem 1.4rem;border-radius:14px;overflow:hidden;
   background:linear-gradient(160deg,var(--superficie) 0%,var(--fundo) 70%);
   color:var(--texto);
-  transform:translateY(var(--sobe,0)) rotateY(var(--incl,0deg));
+  transform:translateY(var(--sobe,0))
+    rotateY(calc(var(--incl,0deg) + var(--dist,0) * -15deg))
+    translateZ(calc(var(--dist,0) * var(--dist,0) * -78px));
   transition:transform .45s var(--ease-out),box-shadow .45s var(--ease-out);
   box-shadow:
     inset 1px 1px 0 rgba(241,208,138,.45),          /* o fio de latão: a luz vem de cima à esquerda */
@@ -679,6 +718,8 @@ textarea{resize:vertical}
 footer{background:#120D0B;border-top:1px solid rgba(244,237,227,.1);
   padding:clamp(56px,8vh,86px) 0 2rem;color:var(--texto)}
 .pe{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:2.4rem}
+.pe__marca{width:92px;height:auto;display:block;margin-bottom:.9rem;
+  filter:drop-shadow(0 0 14px rgba(215,146,11,.35))}
 .pe__logo{font-family:var(--f-display);font-size:1.9rem;line-height:.95;text-transform:uppercase}
 .pe__tag{margin:.9rem 0 0;color:var(--texto-2);font-size:.96rem}
 .pe h5{font-family:var(--f-util);font-weight:600;font-size:.8rem;letter-spacing:.18em;
@@ -735,6 +776,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
   #hero{height:auto}
   #hero .palco{position:static;height:auto;padding-block:var(--sec-y)}
   #orbe,.aura,.dica{display:none}
+  .acende .w{opacity:1!important}
   .hero-olho{opacity:.8;transform:none}
   .mq__pista{animation:none;flex-wrap:wrap;white-space:normal;width:auto}
   /* o trilho deixa de ser trilho: vira grade */
@@ -756,7 +798,9 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
 <div id="barra" aria-hidden="true"></div>
 
 <header class="hd" id="hd">
-  <a class="marca" href="#topo"><i aria-hidden="true"></i>Mind <span>Sculptor</span></a>
+  <a class="marca" href="#topo">
+    <img src="logo-marca.webp" width="640" height="628" alt="" decoding="async">
+    Mind <span>Sculptor</span></a>
   <nav>
     <a href="#diagnostico">Diagnóstico</a>
     <a href="#servicos">O que fazemos</a>
@@ -770,7 +814,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
 <main id="topo">
 
 <!-- ======================= HERO ======================= -->
-<section id="hero" data-tema="escuro" style="--pin:320vh">
+<section id="hero" data-tema="escuro">
   <div class="palco">
     <div class="aura" aria-hidden="true"></div>
     <div class="vinheta" aria-hidden="true"></div>
@@ -788,7 +832,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
     </div>
 
     <canvas id="orbe" aria-hidden="true"></canvas>
-    <p class="dica" id="dica">role para ver o diagnóstico</p>
+    <p class="dica" id="dica">role: a poeira vira a marca</p>
   </div>
 </section>
 
@@ -806,7 +850,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
     <p class="olho rv">O diagnóstico</p>
     <h2 class="rv tw" style="--i:1">Se você se reconhece aqui,<br>
       <span class="ancora">o problema não é falta de esforço.</span></h2>
-    <p class="linha-fina rv" style="--i:2">É falta de direção. Na maioria das empresas o
+    <p class="linha-fina rv acende" style="--i:2">É falta de direção. Na maioria das empresas o
       marketing acontece em pedaços soltos — e pedaço solto não constrói marca nem gera venda.</p>
 
     <ol class="dores">
@@ -1199,6 +1243,8 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
   <div class="shell">
     <div class="pe">
       <div>
+        <img class="pe__marca" src="logo-marca.webp" width="640" height="628"
+             alt="Mind Sculptor" decoding="async" loading="lazy">
         <div class="pe__logo">Mind<br>Sculptor</div>
         <p class="pe__tag">Estratégia que conecta.<br>Resultados que transformam.</p>
       </div>
@@ -1288,6 +1334,30 @@ function partirEmPalavras(h) {
 }
 $$('.tw').forEach(partirEmPalavras);
 
+/* ---------------- texto que acende palavra por palavra ----------------
+   O efeito do site de referencia. A frase ja esta escrita e legivel desde
+   o inicio; o que se move por ela e o foco de leitura. */
+const acendem = $$('.acende');
+if (acendem.length) {
+  acendem.forEach(partirEmPalavras);
+  const acender = () => {
+    for (const el of acendem) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < -40 || r.top > innerHeight + 40) continue;
+      /* a faixa de leitura: comeca a acender quando a frase sobe dos 86%
+         da tela e termina quando chega a 34% — acima do centro, onde o
+         olho de fato esta */
+      const p = clamp01((innerHeight * .86 - r.top) / (innerHeight * .52));
+      const ws = $$('.w', el);
+      const vivas = Math.round(p * ws.length);
+      for (let i = 0; i < ws.length; i++) ws[i].classList.toggle('viva', i < vivas);
+    }
+  };
+  addEventListener('scroll', acender, { passive: true });
+  addEventListener('resize', acender);
+  acender();
+}
+
 /* ATENÇÃO: threshold TEM que ser 0. O IntersectionObserver mede a área DEPOIS
    de aplicar o clip-path do próprio elemento, e a entrada começa em
    `inset(42% 0)` — só 16% do bloco conta como visível. Qualquer threshold
@@ -1343,7 +1413,9 @@ function ajustarCabecalho() {
   }
   hd.classList.toggle('sobre-areia', tema === 'areia');
   document.body.classList.toggle('em-areia', tema === 'areia');
-  document.body.classList.toggle('passou-hero', scrollY > innerHeight * .55);
+  /* o heroi agora ocupa mais de uma tela: o flutuante so entra depois dele */
+  document.body.classList.toggle('passou-hero',
+    scrollY > hero.offsetHeight - innerHeight * .35);
 }
 
 /* barra de progresso da rolagem */
@@ -1392,7 +1464,7 @@ const FASES = {
   btn:    [.68, .94, .66],   /* o CTA, por volta dos 5s */
 };
 const MONTAGEM = 2.4;        /* segundos para a peca inteira se formar */
-const CFG = { passo: 3, max: 3900 };
+const CFG = { passo: 2, max: 17000 };
 
 let W = 0, H = 0, dpr = 1, parts = [], unidades = [];
 let heroP = 0, giro = 0, mvx = 0, mvy = 0, mAlvoX = 0, mAlvoY = 0, tempo = 0;
@@ -1474,6 +1546,9 @@ function amostrar() {
       if (d[((y * off.width) + x) * 4 + 3] <= 128) continue;
       novas.push({ u: ui, tx: x + (Math.random() - .5) * s, ty: y + (Math.random() - .5) * s,
         atraso: Math.random() * .5, quente: Math.random() < .06,
+        /* em que ponto do morph ESTE grao vira ambar: escalonado, para a
+           peca esquentar aos poucos e nao trocar de cor de uma vez */
+        calor: .16 + Math.random() * .38,
         /* 22% da poeira NUNCA vira texto: fica orbitando. E o que mantem a
            esfera viva depois que o titulo ja solidificou. */
         orbe: Math.random() < .32, sx: 0, sy: 0, sz: 0 });
@@ -1492,6 +1567,7 @@ function amostrar() {
     p.sx = Math.cos(th) * r; p.sy = y; p.sz = Math.sin(th) * r;
   });
   parts = novas;
+  atribuirLogo();          /* a nuvem mudou: redistribui os pontos da logo */
 }
 
 function medir() {
@@ -1503,7 +1579,15 @@ function medir() {
   W = Math.round(r.width); H = Math.round(r.height);
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  CFG.max = W < 760 ? 1700 : 3900;
+  /* A esfera sozinha vivia com 3900. A marca formada precisa de MASSA:
+     com 25% de preenchimento ela lia como poeira em forma de logo, nao
+     como peca de ambar; com 49% virou materia.
+     Medido aqui: 34.226 particulas a 51fps em 1440px. Em tela media a
+     marca e menor e o preenchimento se resolve com metade disso, entao
+     so a tela grande paga o passo 2. */
+  if (W < 760)       { CFG.passo = 3; CFG.max = 4200; }
+  else if (W < 1180) { CFG.passo = 3; CFG.max = 17000; }
+  else               { CFG.passo = 2; CFG.max = 40000; }
   montarUnidades();
   amostrar();
   pronto = true;
@@ -1521,9 +1605,100 @@ if (window.ResizeObserver) {
   }).observe(palco);
 }
 
-const NIV = 6, buf = Array.from({ length: NIV * 2 }, () => []);
-/* areia e âmbar. Nada de laranja aqui: o laranja é do CTA, e só dele. */
-const CORES = ['#DEC4A3', '#D7920B'];
+/* --- a logo vira geometria ------------------------------------------
+   Para GIRAR, a logo precisa ser objeto, nao figura. Entao ela e lida
+   pixel a pixel e vira nuvem de pontos com espessura real em Z:
+
+     miolo  pontos nas duas faces (frente e verso) — o corpo do ambar
+     borda  onde o alfa acaba, espalhados por TODA a espessura. Sao eles
+            que desenham o volume quando a peca vira de lado: vidro de
+            canto e onde a luz se acumula, e e por isso que a borda
+            tambem e mais clara e maior na hora de pintar.
+
+   Se a leitura falhar (imagem ausente, canvas sujo), LOGO.pronta fica
+   falsa e o heroi segue como esfera: nada quebra. */
+const LOGO = { pronta: false, pts: [], celula: .01 };
+function amostrarLogo() {
+  const img = new Image();
+  img.decoding = 'async';
+  img.onload = () => {
+    try {
+      const L = 170;      /* mais pontos distintos: ver nota em atribuirLogo */
+      const esc = L / Math.max(img.width, img.height);
+      const off = document.createElement('canvas');
+      off.width = Math.max(2, Math.round(img.width * esc));
+      off.height = Math.max(2, Math.round(img.height * esc));
+      const o = off.getContext('2d', { willReadFrequently: true });
+      o.drawImage(img, 0, 0, off.width, off.height);
+      const d = o.getImageData(0, 0, off.width, off.height).data;
+      const OW = off.width, OH = off.height;
+      const A = (x, y) => (x < 0 || y < 0 || x >= OW || y >= OH)
+        ? 0 : d[((y * OW) + x) * 4 + 3];
+      /* luminancia do pixel: e ela que diz de que parte da marca o grao
+         veio — costura clara, corpo ambar ou base laranja */
+      const LUM = i => d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11;
+      const pts = [];
+      const ESP = .19;                        /* meia espessura, em raios */
+      const k = 2.05 / Math.max(OW, OH);      /* a marca ocupa ~2 diametros */
+      const cx = OW / 2, cy = OH / 2;
+      for (let y = 0; y < OH; y++) for (let x = 0; x < OW; x++) {
+        if (A(x, y) < 110) continue;
+        const naBorda = A(x - 1, y) < 110 || A(x + 1, y) < 110
+                     || A(x, y - 1) < 110 || A(x, y + 1) < 110;
+        const l = LUM(((y * OW) + x) * 4);
+        /* 0 areia, 1 ambar, 2 luz, 3 laranja fundo — ver CORES */
+        const tom = naBorda ? 2 : (l > 188 ? 2 : l > 116 ? 1 : 3);
+        /* o tremor quebra a grade de leitura: sem ele o miolo sai axadrezado */
+        const tre = () => (Math.random() - .5);
+        if (naBorda) {
+          /* a parede lateral, de ponta a ponta da espessura */
+          for (let i = 0; i < 3; i++)
+            pts.push([(x - cx + tre()) * k, (y - cy + tre()) * k,
+                      (Math.random() * 2 - 1) * ESP, 1, tom]);
+        } else {
+          pts.push([(x - cx + tre()) * k, (y - cy + tre()) * k,
+                    (Math.random() < .5 ? -ESP : ESP) * (.82 + Math.random() * .18), 0, tom]);
+        }
+      }
+      if (pts.length < 200) return;
+      LOGO.pts = pts; LOGO.celula = k; LOGO.pronta = true;
+      atribuirLogo();
+    } catch (e) { /* esfera sem logo e melhor que heroi quebrado */ }
+  };
+  img.src = 'logo-marca.webp';
+}
+
+/* Cada particula ganha UM ponto da logo. A ordem e embaralhada para a
+   cobertura ser pareja: sorteio com repeticao deixaria buracos. */
+function atribuirLogo() {
+  if (!LOGO.pronta || !parts.length) return;
+  const n = LOGO.pts.length, ordem = [...Array(n).keys()];
+  for (let i = n - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;
+                                    [ordem[i], ordem[j]] = [ordem[j], ordem[i]]; }
+  /* Sobrando particula, ela repete um ponto ja usado. Repetir a POSICAO
+     seria empilhar no mesmo lugar e nao cobrir nada: a repetida se espalha
+     dentro da celula de leitura. */
+  const cel = LOGO.celula;
+  parts.forEach((p, i) => {
+    const q = LOGO.pts[ordem[i % n]], rep = i >= n;
+    p.lx = q[0] + (rep ? (Math.random() - .5) * cel : 0);
+    p.ly = q[1] + (rep ? (Math.random() - .5) * cel : 0);
+    p.lz = q[2] + (rep ? (Math.random() - .5) * cel * 2 : 0);
+    p.borda = q[3]; p.tom = q[4];
+  });
+}
+
+/* quanto da rolagem do heroi ja passou: e isso que transforma a esfera */
+function progHero() {
+  const total = hero.offsetHeight - innerHeight;
+  return total > 0 ? clamp01(-hero.getBoundingClientRect().top / total) : 0;
+}
+
+const NIV = 6, CANAIS = 4, buf = Array.from({ length: NIV * CANAIS }, () => []);
+/* areia (esfera e poeira do texto), âmbar, a luz da aresta e o laranja
+   fundo da base da marca. O laranja aqui é da LOGO, não acento de
+   interface: fora da marca ele continua sendo só do CTA. */
+const CORES = ['#DEC4A3', '#D7920B', '#FFDC96', '#C0410A'];
 
 function desenharHero(dt) {
   const r = hero.getBoundingClientRect();
@@ -1544,14 +1719,27 @@ function desenharHero(dt) {
     }
   }
 
-  giro += dt * (.16 + .34 * (1 - rampa(heroP, .05, .92)));   /* lenta, com massa */
+  /* A peca NUNCA para de girar: era o pedido. Antes a rotacao morria
+     quando o titulo solidificava — agora ela desacelera ate um giro de
+     cruzeiro e fica nele para sempre. */
+  giro += dt * (.34 + .26 * (1 - rampa(heroP, .05, .92)));
   mvx += (mAlvoX - mvx) * .05; mvy += (mAlvoY - mvy) * .05;
+
+  /* o morph: 0 = esfera de poeira, 1 = logo formada. Comeca depois de um
+     respiro e termina em 62% para a marca girar pronta por um bom trecho. */
+  const m = LOGO.pronta ? rampa(progHero(), .06, .62) : 0;
 
   ctx.clearRect(0, 0, W, H);
   /* assimetria controlada (manual, seção 04): a esfera não fica no centro */
-  const cxp = W * (W < 980 ? .5 : .72), cyp = H * .48;
-  const R = Math.min(W, H) * .225;
-  const incl = -.32 + mvy * .3, rot = giro + mvx * .55;
+  const cxp = W * (W < 980 ? .5 : .74), cyp = H * .48;
+  /* no celular a marca cresce ao assumir a tela: la ela nao divide espaco */
+  const R = Math.min(W, H) * (W < 760 ? .225 + .1 * m : .225);
+  /* a esfera pode ser vista de cima; a marca tem que ser vista DE FRENTE,
+     senao nao se le. Por isso a inclinacao abre conforme o morph avanca. */
+  const incl = (-.32 + .23 * m) + mvy * .3;
+  /* a derivada de (giro - A·sen(2·giro)) e 1-2A de frente e 1+2A de lado:
+     com A=.34 a marca fica ~5x mais tempo virada para quem le */
+  const rot = (giro - m * .34 * Math.sin(2 * giro)) + mvx * .55;
   const cosR = Math.cos(rot), sinR = Math.sin(rot);
   const cosI = Math.cos(incl), sinI = Math.sin(incl);
 
@@ -1563,39 +1751,76 @@ function desenharHero(dt) {
   };
 
   for (const b of buf) b.length = 0;
+  const temLogo = m > .001;
   for (const p of parts) {
     const u = unidades[p.u];
-    const [ox, oy, oz, per] = proj(p.sx, p.sy, p.sz, 1);
+
+    /* A TRANSFORMACAO acontece aqui, no espaco do MODELO — nao na tela.
+       E essa a diferenca entre a logo girar de verdade e ser um desenho
+       que apareceu: a posicao e interpolada da esfera para a logo e so
+       DEPOIS projetada, entao o giro continua valendo o tempo todo. */
+    const mx = temLogo ? p.sx + (p.lx - p.sx) * m : p.sx;
+    const my = temLogo ? p.sy + (p.ly - p.sy) * m : p.sy;
+    const mz = temLogo ? p.sz + (p.lz - p.sz) * m : p.sz;
+    const [ox, oy, oz, per] = proj(mx, my, mz, 1);
+
     let t = (u.t - p.atraso) / (1 - p.atraso);
     t = t < 0 ? 0 : t > 1 ? 1 : t;
     const e = easeOut(t), resto = 1 - e;
 
-    /* a orbital fica onde esta: para ela o destino nao existe */
-    const x = p.orbe ? ox : ox + (p.tx - ox) * e;
-    const y = p.orbe ? oy : oy + (p.ty - oy) * e;
+    /* o texto segura a poeira enquanto se forma e devolve conforme a marca
+       se monta: o peso cai a zero quando o morph completa */
+    const peso = p.orbe ? 0 : e * (1 - m);
+    const x = ox + (p.tx - ox) * peso;
+    const y = oy + (p.ty - oy) * peso;
 
-    /* profundidade da esfera enquanto está lá; some conforme a peça solidifica.
-       Sobram ~7% de poeira sobre a peça pronta — é o que mantém o hero vivo. */
-    const prof = (.3 + .7 * (oz + 1) / 2) * resto + e;
-    const a = p.orbe ? (.3 + .7 * (oz + 1) / 2) * .82 : prof * (1 - u.sol * .93);
+    const dep = .3 + .7 * (oz + 1) / 2;
+    const aTxt = p.orbe ? 0 : (dep * resto + e) * (1 - u.sol * .93) * (1 - m);
+    /* O fator abre com o morph e vale 1 na esfera, para a esfera continuar
+       exatamente como era. Na marca a aresta sobe e o miolo desce: o miolo
+       e GROSSO e fraco (empilha e vira massa de ambar), a aresta e FINA e
+       forte (desenha a silhueta quando a peca vira de lado). */
+    const aMod = dep * (1 + m * (p.borda ? .5 : -.12)) * Math.max(p.orbe ? .82 : 0, m);
+    const a = Math.min(1, Math.max(aTxt, aMod));
     if (a < .025) continue;
-    const tam = (0.9 + per * .8) * resto + 1 * e;
+
+    const cresce = 1 + m * (p.borda ? .5 : 2);
+    const tam = ((0.9 + per * .8) * resto + 1 * e) * cresce;
     const niv = Math.min(NIV - 1, (a * NIV) | 0);
-    buf[niv * 2 + (p.quente ? 1 : 0)].push(x, y, tam);
+    /* enquanto e poeira, areia; depois do ponto de virada deste grao,
+       o tom que ele herdou do pixel da marca */
+    const canal = (m > p.calor && p.tom !== undefined) ? p.tom
+                : (p.quente ? 1 : 0);
+    buf[niv * CANAIS + canal].push(x, y, tam);
   }
 
-  for (let k = 0; k < NIV; k++) for (let c = 0; c < 2; c++) {
-    const b = buf[k * 2 + c];
+  /* Com a marca formada a pintura vira aditiva: luz que atravessa ambar
+     SOMA. E o que separa "poeira em forma de logo" de peca iluminada.
+     O alfa cai junto, senao o acumulo satura tudo em branco. */
+  const soma = m > .06;
+  ctx.globalCompositeOperation = soma ? 'lighter' : 'source-over';
+  const ganho = soma ? .8 + .2 * (1 - m) : 1;
+  for (let k = 0; k < NIV; k++) for (let c = 0; c < CANAIS; c++) {
+    const b = buf[k * CANAIS + c];
     if (!b.length) continue;
-    ctx.globalAlpha = ((k + 1) / NIV) * (c ? 1 : .86);
+    ctx.globalAlpha = ((k + 1) / NIV) * (c === 0 ? .86 : 1) * ganho;
     ctx.fillStyle = CORES[c];
     ctx.beginPath();
     for (let i = 0; i < b.length; i += 3) ctx.rect(b[i], b[i + 1], b[i + 2], b[i + 2]);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 
-  palco.querySelector('.aura').style.opacity = 1 - rampa(heroP, .1, .85) * .55;
+  if (W < 980) {
+    /* discreta atras do texto (.42), inteira quando a marca e o assunto */
+    cv.style.opacity = (.42 + .58 * m).toFixed(3);
+    palco.classList.toggle('marca-manda', m > .5);
+  }
+
+  /* a aura recua quando o titulo cristaliza e volta como halo da marca */
+  palco.querySelector('.aura').style.opacity =
+    (1 - rampa(heroP, .1, .85) * .55) * (1 + m * 1.25);
   $('#dica').classList.toggle('off', scrollY > 24);
 }
 
@@ -1629,9 +1854,18 @@ if (trilho && pista) {
   }, { threshold: 0, rootMargin: '0px 0px -14% 0px' }).observe(trilho);
 
   const limite = v => Math.max(-maxX, Math.min(0, v));
+  /* Centro de cada ficha, medido UMA vez. O translate do trilho nao muda
+     offsetLeft, entao medir no laco so forcaria layout a 60fps de graca. */
+  let centros = [];
+  function medirFichas() {
+    const base = trilho.getBoundingClientRect().left - x;
+    centros = fichas.map(c => c.getBoundingClientRect().left - base + c.offsetWidth / 2);
+  }
   function medirTrilho() {           /* NUNCA chamar de medir(): ver nota no fim */
     maxX = Math.max(0, pista.scrollWidth - trilho.clientWidth);
     alvoX = limite(alvoX); x = limite(x);
+    pista.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
+    medirFichas();
     aplicar();
   }
   function aplicar() {
@@ -1639,14 +1873,27 @@ if (trilho && pista) {
     if (prg) prg.style.width = (8 + (maxX > 0 ? (-x / maxX) : 1) * 92).toFixed(1) + '%';
     if (setaAnt)  setaAnt.disabled  = x >= -1;
     if (setaProx) setaProx.disabled = x <= -maxX + 1;
+    /* a galeria em perspectiva: -1 = ficha na borda esquerda, +1 na direita */
+    const meio = trilho.clientWidth / 2;
+    for (let i = 0; i < fichas.length; i++) {
+      const d = trava((centros[i] + x - meio) / meio, -1.5, 1.5);
+      fichas[i].style.setProperty('--dist', d.toFixed(3));
+    }
   }
   function laco() {
     const d = alvoX - x;
-    if (Math.abs(d) < .4) { x = alvoX; aplicar(); raf = 0; return; }
+    if (Math.abs(d) < .4) {
+      x = alvoX; aplicar(); raf = 0;
+      trilho.classList.remove('movendo'); return;
+    }
     x += d * .16; aplicar();
     raf = requestAnimationFrame(laco);
   }
-  function irPara(v) { alvoX = limite(v); if (!raf) raf = requestAnimationFrame(laco); }
+  function irPara(v) {
+    alvoX = limite(v);
+    trilho.classList.add('movendo');
+    if (!raf) raf = requestAnimationFrame(laco);
+  }
 
   /* a inclinação acompanha a velocidade do arrasto: é feedback de física,
      não enfeite. Teto de ±4° e volta a zero quando a inércia acaba. */
@@ -1862,7 +2109,10 @@ function quadro(now) {
 
 if (!reduz) {
   requestAnimationFrame(quadro);
-  const assentar = () => { medir(); $('#heroOlho').classList.add('on'); montando = true; };
+  const assentar = () => {
+    medir(); amostrarLogo();
+    $('#heroOlho').classList.add('on'); montando = true;
+  };
   if (document.fonts) document.fonts.ready.then(assentar);
   setTimeout(assentar, 1200);
 } else {
