@@ -1,13 +1,13 @@
 /* V5 — mechanisms recovered from the original Mind Sculptor site */
 
 /* Buttons: compact printed-sign geometry, internal depth and a moving highlight. */
-.ms-btn{position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:11px;min-height:50px;padding:0 20px;border:1px solid rgba(255,200,133,.38)!important;border-radius:6px!important;color:var(--cream)!important;background:linear-gradient(180deg,#d95f1a,var(--orange) 54%,#8f2f05)!important;box-shadow:inset 0 1px 0 rgba(255,222,185,.48),inset 0 -2px 0 rgba(53,13,0,.34),0 12px 24px -12px rgba(185,62,6,.82)!important;font:500 7px 'IBM Plex Mono'!important;letter-spacing:.12em;text-transform:uppercase;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,filter .25s!important}
+.ms-btn{position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:11px;min-height:50px;padding:0 20px;border:1px solid rgba(255,200,133,.38)!important;border-radius:6px!important;color:var(--cream)!important;background:linear-gradient(180deg,#d95f1a,var(--orange) 54%,#8f2f05)!important;box-shadow:inset 0 1px 0 rgba(255,222,185,.48),inset 0 -2px 0 rgba(53,13,0,.34),0 12px 24px -12px rgba(185,62,6,.82)!important;font:500 13px 'IBM Plex Mono'!important;letter-spacing:.12em;text-transform:uppercase;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,filter .25s!important}
 .ms-btn::before{content:'';position:absolute;z-index:-1;inset:-2px;background:linear-gradient(110deg,transparent 25%,rgba(255,237,212,.28) 45%,transparent 65%);transform:translateX(-125%);transition:transform .62s cubic-bezier(.2,.8,.2,1)}
 .ms-btn:hover{transform:translateY(-3px)!important;filter:brightness(1.08);box-shadow:inset 0 1px 0 rgba(255,226,188,.55),0 18px 36px -14px rgba(185,62,6,.92)!important}
 .ms-btn:hover::before{transform:translateX(125%)}
 .ms-btn:hover svg{transform:translate(2px,-2px)}
 .ms-btn svg{transition:transform .25s}
-.ms-btn-small{min-height:42px;padding:0 15px!important;font-size:6.5px!important}
+.ms-btn-small{min-height:42px;padding:0 15px!important;font-size:12.5px!important}
 .ms-btn-inline{width:max-content!important;margin-top:28px!important;padding-inline:17px!important}
 .ms-btn-dark{width:max-content;background:linear-gradient(180deg,#2b211b,#120d0a)!important;border-color:rgba(26,19,16,.72)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 15px 30px -16px rgba(26,19,16,.8)!important}
 .ms-btn-dark:hover{background:linear-gradient(180deg,#d95f1a,var(--orange) 54%,#8f2f05)!important}
@@ -16,7 +16,7 @@
 .hero-dust{position:absolute;z-index:2;right:1.8vw;top:12vh;width:min(43vw,720px);aspect-ratio:1;pointer-events:none;perspective:1100px;filter:drop-shadow(0 28px 55px rgba(0,0,0,.45))}
 .hero-dust canvas{position:absolute;inset:0;width:100%;height:100%}
 .hero-dust img{position:absolute;left:50%;top:50%;width:68%;height:68%;object-fit:contain;opacity:0;transform-style:preserve-3d;filter:drop-shadow(0 0 28px rgba(215,146,11,.52)) drop-shadow(0 24px 35px rgba(0,0,0,.48));will-change:opacity,transform}
-.hero-dust span{position:absolute;right:10%;bottom:7%;color:rgba(244,237,227,.5);font:500 6px 'IBM Plex Mono';letter-spacing:.16em}
+.hero-dust span{position:absolute;right:10%;bottom:7%;color:rgba(244,237,227,.5);font:500 12px 'IBM Plex Mono';letter-spacing:.16em}
 .scene-1 .scene-copy{padding-right:min(37vw,620px)}
 .scene-shade{background:linear-gradient(90deg,rgba(8,6,5,.96) 0%,rgba(8,6,5,.78) 43%,rgba(8,6,5,.34) 75%,rgba(8,6,5,.67) 100%),linear-gradient(0deg,rgba(8,6,5,.82),transparent 38%)!important}
 .scene-copy{filter:drop-shadow(0 22px 28px rgba(0,0,0,.62));transform-style:preserve-3d;perspective:1200px}
@@ -26,10 +26,10 @@
 .scene-copy em{text-shadow:0 1px 0 #ffb733,0 3px 0 #6f2605,0 0 28px rgba(215,146,11,.32)}
 
 /* The original comparison behaviour: a pinned stage plus four real navigation controls. */
-.contrast-title{position:absolute;z-index:9;left:4vw;top:96px;margin:0;color:var(--amber);font:500 7px 'IBM Plex Mono';letter-spacing:.15em}
+.contrast-title{position:absolute;z-index:9;left:4vw;top:96px;margin:0;color:var(--amber);font:500 13px 'IBM Plex Mono';letter-spacing:.15em}
 .contrast-v4 .contrast-count{top:127px!important}
 .contrast-index{position:absolute;z-index:10;right:4vw;top:94px;display:flex;gap:7px;margin:0;padding:0;list-style:none}
-.contrast-index button{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid rgba(244,237,227,.14);border-radius:99px;color:rgba(244,237,227,.52);background:rgba(8,6,5,.28);backdrop-filter:blur(12px);cursor:pointer;font:500 5.7px 'IBM Plex Mono';letter-spacing:.08em;transition:.3s}
+.contrast-index button{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid rgba(244,237,227,.14);border-radius:99px;color:rgba(244,237,227,.52);background:rgba(8,6,5,.28);backdrop-filter:blur(12px);cursor:pointer;font:500 11.5px 'IBM Plex Mono';letter-spacing:.08em;transition:.3s}
 .contrast-index button i{color:var(--amber);font-style:normal}
 .contrast-index button:hover,.contrast-index button[aria-current=true]{color:var(--cream);border-color:rgba(215,146,11,.5);background:rgba(215,146,11,.12);box-shadow:0 0 25px rgba(215,146,11,.08)}
 .contrast-index button[aria-current=true]{transform:translateY(-2px)}
@@ -60,7 +60,7 @@
 .diagnostic-list{display:grid;gap:11px;max-width:650px;margin:0 0 28px;padding:0;list-style:none;color:#5e4e43;font-size:16px}
 .diagnostic-list li{display:flex;align-items:flex-start;gap:10px}
 .diagnostic-list svg{flex:none;margin-top:2px;color:var(--orange)}
-.direct-contact{margin:13px 0 0!important;color:#806f62!important;font:500 6px 'IBM Plex Mono'!important;letter-spacing:.1em}
+.direct-contact{margin:13px 0 0!important;color:#806f62!important;font:500 12px 'IBM Plex Mono'!important;letter-spacing:.1em}
 .contact-form .ms-btn{width:100%;justify-content:space-between;margin-top:10px;padding:0 18px;border:0!important}
 .form-hp{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important}
 .contact-form .form-consent{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin:5px 0 16px}
@@ -91,7 +91,7 @@
   .header-cta.ms-btn-small{width:42px;min-height:40px;padding:0!important}.header-cta.ms-btn-small span{display:none}
   .hero-dust{right:-24vw;top:22vh;width:96vw;opacity:.48}
   .scene-copy h1,.scene-copy h2{transform:none}
-  .contrast-title{font-size:5.5px}.contrast-index{bottom:78px}
+  .contrast-title{font-size:11.5px}.contrast-index{bottom:78px}
   .method-card{min-height:440px!important}
   .final-v4{padding-bottom:170px!important}.final-v4 .final-copy h2{font-size:48px!important}
   .diagnostic-list{font-size:14px}

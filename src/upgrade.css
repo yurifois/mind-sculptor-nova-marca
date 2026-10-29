@@ -1,0 +1,219 @@
+/* =========================================================================
+   UPGRADE — camada de melhorias sobre o desenho existente.
+
+   Regra desta folha: ela NÃO redesenha a página. Ela corrige o que estava
+   quebrado (imagem fixa passando da tela, celular sem navegação) e
+   acrescenta o que faltava (menu de verdade, entrada por transformação, o
+   feixe e o brilho que percorre a borda do cartão do manifesto).
+
+   Entra por último no main.jsx de propósito: assim vence as camadas v3→v6
+   sem precisar espalhar !important por tudo.
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   1. CABEÇALHO
+   ------------------------------------------------------------------------- */
+.site-header{transition:height .3s ease,background .3s ease,border-color .3s ease}
+.site-header.is-compact{height:62px;border-bottom-color:rgba(244,237,227,.14);
+  background:linear-gradient(180deg,rgba(12,8,7,.94),rgba(12,8,7,.72))}
+.site-header .brand,.site-header nav,.site-header .header-cta{position:relative;z-index:3}
+
+.site-header nav a{position:relative;padding-block:6px;white-space:nowrap}
+/* O traço não aparece do nada: ele CRESCE do centro. Presença é estado;
+   movimento é informação — o traço diz de onde para onde. */
+.site-header nav a::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--amber);transform:scaleX(0);transform-origin:50% 50%;
+  transition:transform .32s cubic-bezier(.22,.8,.24,1)}
+.site-header nav a:hover::after,
+.site-header nav a[aria-current]::after{transform:scaleX(1)}
+.site-header nav a[aria-current]{color:var(--cream)}
+
+/* O botão do menu só existe no celular. Dois traços que viram X. */
+.menu-toggle{display:none;position:relative;z-index:3;width:46px;height:46px;padding:0;
+  justify-self:end;border:1px solid rgba(244,237,227,.22);border-radius:50%;
+  background:rgba(12,8,7,.4);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.menu-toggle i{position:absolute;left:50%;width:17px;height:1.5px;margin-left:-8.5px;
+  background:var(--cream);border-radius:2px;
+  transition:transform .34s cubic-bezier(.22,.8,.24,1)}
+.menu-toggle i:first-child{top:19px}
+.menu-toggle i:last-child{top:25px}
+.site-header.is-open .menu-toggle{border-color:var(--amber)}
+.site-header.is-open .menu-toggle i:first-child{transform:translateY(3px) rotate(45deg)}
+.site-header.is-open .menu-toggle i:last-child{transform:translateY(-3px) rotate(-45deg)}
+
+.mobile-menu{display:none}
+
+/* -------------------------------------------------------------------------
+   2. A IMAGEM FIXA DA SEÇÃO DE SERVIÇOS ESTAVA PASSANDO DA TELA.
+   Era `height:calc(100svh - 120px)` com `min-height:650px` e `top:96px`.
+   Num notebook de 700px de altura a conta dava 96+650 = 746: o cartão
+   terminava 129px ABAIXO da dobra e as etiquetas ficavam cortadas.
+   O piso fixo é o erro — ele ignora a tela. Agora a altura é o MENOR valor
+   entre o espaço que sobra e um teto, e o piso também respeita a tela.
+   De quebra a imagem fica menor, que era o outro pedido.
+   ------------------------------------------------------------------------- */
+.services-v4 .v4-stage{
+  top:clamp(86px,10vh,104px);
+  /* o teto também não pode ser número fixo: 660px numa tela de 1440 de
+     altura deixa 676px de vazio embaixo. É o mesmo erro do piso, ao
+     contrário — ignorar a tela. O teto cresce junto, a partir de ~920px. */
+  height:min(calc(100svh - clamp(132px,17vh,172px)),max(660px,72svh));
+  min-height:min(430px,calc(100svh - 148px));
+}
+.services-v4 .service-layout{grid-template-columns:minmax(0,.84fr) minmax(430px,1.16fr)}
+
+/* O MESMO ERRO, DO OUTRO LADO. No celular o cartão de serviço tem
+   `min-height:510px` (430px no breakpoint menor) enquanto o conteúdo
+   dentro dele mede 207px: sobram 163px de faixa escura morta em cima e
+   embaixo. Piso em pixel que ignora o conteúdo, igualzinho ao palco.
+   Quem manda na altura é a imagem. */
+@media(max-width:900px){
+  .services-v4 .mobile-service-art{min-height:0;height:auto;padding:16px 8px}
+}
+
+/* -------------------------------------------------------------------------
+   3. O FEIXE E O BRILHO QUE PERCORRE A BORDA DO CARTÃO
+      (seção "VALOR NÃO É EXPLICADO. É PERCEBIDO.")
+
+   A coreografia pedida, em um único relógio de 5,2s:
+
+     0,0s ─ 0,8s   o feixe desce do alto da seção até o canto do cartão
+     0,8s ─ 2,4s   o brilho corre a borda de CIMA, da esquerda para a direita
+     2,4s ─ 2,7s   chegando no fim ele desacelera, apaga e passa o bastão
+     2,5s ─ 4,4s   o novo brilho desce a borda ESQUERDA até quase o fim
+     4,4s ─ 5,2s   silêncio, e recomeça
+
+   Os três compartilham a MESMA duração e se separam por porcentagem dentro
+   do quadro-chave. É isso que impede a deriva: três animações com durações
+   diferentes se desencontram depois de alguns minutos, e o bastão passa a
+   ser entregue no vazio.
+
+   Tudo mora dentro da <figure>, então acompanha a rotação de -3° do cartão.
+   A seção tem overflow:hidden, então o feixe é cortado no alto dela — que
+   é de onde ele deve parecer vir.
+   ------------------------------------------------------------------------- */
+.manifesto-media{--ciclo:5.2s}
+.mm-feixe,.mm-borda{position:absolute;z-index:6;pointer-events:none;overflow:hidden}
+.mm-feixe::before,.mm-borda::before{content:'';position:absolute;inset:0;
+  filter:drop-shadow(0 0 8px rgba(215,146,11,.95));
+  animation-duration:var(--ciclo);animation-iteration-count:infinite;
+  animation-timing-function:linear;animation-play-state:paused}
+
+/* O feixe: preso ao canto superior esquerdo, subindo para fora do cartão. */
+.mm-feixe{left:-1px;bottom:100%;width:2px;height:min(44vh,360px)}
+.mm-feixe::before{animation-name:mmFeixe;
+  background:linear-gradient(180deg,transparent 0%,rgba(215,146,11,.14) 34%,
+                             rgba(215,146,11,.75) 82%,#FFE3AE 97%,#FFF6E4 100%)}
+
+.mm-borda-topo{left:-1px;right:-1px;top:-1px;height:2px}
+.mm-borda-topo::before{animation-name:mmTopo;
+  background:linear-gradient(90deg,transparent 36%,rgba(215,146,11,.5) 45%,
+    #FFE3AE 49%,#FFF6E4 50%,#FFE3AE 51%,rgba(215,146,11,.5) 55%,transparent 64%)}
+
+.mm-borda-esq{left:-1px;top:-1px;bottom:-1px;width:2px}
+.mm-borda-esq::before{animation-name:mmEsq;
+  background:linear-gradient(180deg,transparent 36%,rgba(215,146,11,.5) 45%,
+    #FFE3AE 49%,#FFF6E4 50%,#FFE3AE 51%,rgba(215,146,11,.5) 55%,transparent 64%)}
+
+/* Só roda com a seção em cena. Aqui o IntersectionObserver é a ferramenta
+   CERTA: ele liga e desliga um estado, não decide a cada quadro se algo
+   desenha — se a entrega atrasar meio segundo ninguém percebe numa
+   animação decorativa em laço. É o oposto do caso da cena 3D. */
+.type-manifesto.cena-viva .mm-feixe::before,
+.type-manifesto.cena-viva .mm-borda::before{animation-play-state:running}
+
+@keyframes mmFeixe{
+  0%   {transform:translateY(-100%);opacity:0}
+  3%   {opacity:1}
+  15%  {transform:translateY(0);opacity:1}
+  21%  {transform:translateY(0);opacity:.18}
+  26%,100%{transform:translateY(0);opacity:0}
+}
+@keyframes mmTopo{
+  0%,14%{transform:translateX(-50%);opacity:0}
+  17%   {opacity:1}
+  /* desacelera na chegada: o brilho ENCOSTA na quina em vez de bater nela */
+  41%   {transform:translateX(34%);opacity:1;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  47%   {transform:translateX(44%);opacity:.7}
+  52%   {transform:translateX(47%);opacity:0}
+  100%  {transform:translateX(47%);opacity:0}
+}
+@keyframes mmEsq{
+  0%,47%{transform:translateY(-50%);opacity:0}
+  50%   {opacity:1}
+  74%   {transform:translateY(30%);opacity:1;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  80%   {transform:translateY(39%);opacity:.7}
+  85%   {transform:translateY(42%);opacity:0}
+  100%  {transform:translateY(42%);opacity:0}
+}
+
+/* -------------------------------------------------------------------------
+   4. TIPOGRAFIA — os casos que mereciam mais que a escala geral
+   ------------------------------------------------------------------------- */
+/* O telefone é a informação mais importante da página. Estava em 6px; a
+   escala geral levou a 12px; aqui vai a 14px e sai do cinza claro. */
+.direct-contact{font-size:14px!important;color:#5d4c40!important;letter-spacing:.09em}
+.final-cta footer{letter-spacing:.09em;gap:0 18px}
+
+/* -------------------------------------------------------------------------
+   5. CELULAR
+   ------------------------------------------------------------------------- */
+/* O painel entra em 1000px, não em 900.
+   Motivo medido: com a tipografia legível o menu ficou mais largo, e a
+   905px sobravam 2px entre a marca e o menu e ZERO entre o menu e o
+   botão. A grade não deixava estourar, então nada quebrava visivelmente
+   — ficava só apertado, que é pior, porque ninguém percebe e mesmo assim
+   parece amador. Abaixo de 1000px o painel resolve com folga. */
+@media(max-width:1000px){
+  .site-header{grid-template-columns:1fr auto;gap:10px}
+  .site-header.is-compact{height:58px}
+  .site-header nav{display:none}
+  .menu-toggle{display:block}
+  .header-cta{display:none}
+
+  /* ATENÇÃO: o cabeçalho tem `backdrop-filter`, e isso faz dele um BLOCO DE
+     CONTENÇÃO — um filho `position:fixed` passa a se medir pelos 70px do
+     cabeçalho, não pela janela. Por isso o painel é `absolute` com altura
+     declarada: ancorado no cabeçalho, que já é fixo. */
+  .mobile-menu{display:flex;position:absolute;z-index:1;left:0;right:0;top:0;
+    flex-direction:column;justify-content:center;gap:26px;
+    height:100svh;padding:96px 26px 42px;
+    background:linear-gradient(170deg,#140f0c,#070504 62%);
+    visibility:hidden;transform:translateY(-100%);
+    transition:transform .52s cubic-bezier(.22,.8,.24,1),visibility 0s linear .52s}
+  .site-header.is-open .mobile-menu{visibility:visible;transform:translateY(0);
+    transition:transform .52s cubic-bezier(.22,.8,.24,1),visibility 0s}
+
+  /* Os itens chegam em cascata. A cascata é o que diz "isto é uma lista",
+     em vez de um bloco que piscou inteiro. */
+  .mobile-menu nav{display:grid;gap:4px}
+  .mobile-menu nav a{display:flex;align-items:baseline;gap:16px;
+    padding:14px 0;border-bottom:1px solid rgba(244,237,227,.09);
+    color:var(--cream);font:400 clamp(30px,8.6vw,42px)/1 'Anton';letter-spacing:-.02em;
+    opacity:0;transform:translateY(18px);
+    transition:opacity .4s ease,transform .5s cubic-bezier(.22,.8,.24,1),color .2s}
+  .site-header.is-open .mobile-menu nav a{opacity:1;transform:none;
+    transition-delay:calc(.16s + var(--i) * .055s)}
+  .mobile-menu nav a span{color:var(--amber);font:400 12px 'IBM Plex Mono';letter-spacing:.14em}
+  .mobile-menu nav a[aria-current]{color:var(--amber)}
+  .mobile-menu-cta{justify-content:center;width:100%;min-height:56px;
+    color:var(--ink)!important;background:var(--amber);border-color:var(--amber);
+    font:500 13px 'IBM Plex Mono';letter-spacing:.12em;
+    opacity:0;transform:translateY(18px);
+    transition:opacity .4s ease,transform .5s cubic-bezier(.22,.8,.24,1)}
+  .site-header.is-open .mobile-menu-cta{opacity:1;transform:none;transition-delay:.46s}
+  .mobile-menu p{margin:0;color:rgba(244,237,227,.5);text-align:center;
+    font:400 13px 'IBM Plex Mono';letter-spacing:.1em}
+
+}
+
+/* No celular o cartão do manifesto entra no fluxo, e um feixe de 44vh
+   atravessaria o parágrafo acima dele. Encurta. */
+@media(max-width:900px){
+  .mm-feixe{height:min(20vh,150px)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .mm-feixe,.mm-borda{display:none}
+  .mobile-menu,.mobile-menu nav a,.mobile-menu-cta{transition-duration:.01ms!important}
+}

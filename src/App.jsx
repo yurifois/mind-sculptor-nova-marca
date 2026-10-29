@@ -42,6 +42,79 @@ const visionCards=[
 
 function Brand(){return <a className="brand" href="#topo" aria-label="Mind Sculptor — início"><img src="/art/logo-avatar.png" alt=""/><span><b>MIND SCULPTOR</b><small>MARKETING DIGITAL</small></span></a>}
 
+const navLinks=[['#visao','VISÃO'],['#servicos','SERVIÇOS'],['#direcao','DIFERENÇA'],['#inteligencia','IA'],['#metodo','MÉTODO']]
+
+function SiteHeader(){
+  const [aberto,setAberto]=useState(false)
+  const cabecalho=useRef(null)
+
+  /* Qual seção o leitor está vendo, e se já saiu do topo.
+     Duas decisões de propósito:
+
+     1. A leitura é SÍNCRONA no evento de rolagem, não por
+        IntersectionObserver. Marca de menu que chega atrasada aponta para
+        a seção errada, e o leitor vê o erro. Cinco retângulos por evento
+        não custam nada.
+
+     2. O resultado vai DIRETO para o DOM, sem passar por estado do React.
+        Medido: com `setAtivo` a marca errava 11 de 16 posições num
+        aparelho lento — a leitura estava certa, quem chegava tarde era o
+        render. Atributo que muda a cada rolagem não é estrutura de
+        componente; é pintura. E de quebra o cabeçalho inteiro deixa de
+        ser remontado a cada evento. */
+  useEffect(()=>{
+    const topo=cabecalho.current
+    if(!topo)return undefined
+    const itens=[...topo.querySelectorAll('[data-secao]')]
+    const ler=()=>{
+      topo.classList.toggle('is-compact',scrollY>40)
+      const meio=innerHeight*0.42
+      let atual=''
+      for(const [href] of navLinks){
+        const el=document.querySelector(href)
+        if(!el)continue
+        const r=el.getBoundingClientRect()
+        if(r.top<=meio&&r.bottom>meio){atual=href;break}
+      }
+      for(const a of itens){
+        if(a.dataset.secao===atual)a.setAttribute('aria-current','true')
+        else a.removeAttribute('aria-current')
+      }
+    }
+    ler()
+    addEventListener('scroll',ler,{passive:true})
+    addEventListener('resize',ler)
+    return()=>{removeEventListener('scroll',ler);removeEventListener('resize',ler)}
+  },[])
+
+  /* Painel aberto trava a rolagem do fundo e responde ao Esc. Sem isso o
+     leitor rola a pagina por tras do menu e nao entende o que aconteceu. */
+  useEffect(()=>{
+    if(!aberto)return undefined
+    const antes=document.body.style.overflow
+    document.body.style.overflow='hidden'
+    const tecla=e=>{if(e.key==='Escape')setAberto(false)}
+    addEventListener('keydown',tecla)
+    return()=>{document.body.style.overflow=antes;removeEventListener('keydown',tecla)}
+  },[aberto])
+
+  return <header ref={cabecalho} className={'site-header'+(aberto?' is-open':'')}>
+    <Brand/>
+    <nav aria-label="Navegação principal">{navLinks.map(([href,rotulo])=>
+      <a key={href} href={href} data-secao={href}>{rotulo}</a>)}</nav>
+    <a className="header-cta ms-btn ms-btn-small" href={whatsapp} target="_blank" rel="noreferrer" data-cursor="CHAMAR"><span>CHAMA NO WHATSAPP</span><ArrowUpRight size={15}/></a>
+    <button className="menu-toggle" type="button" aria-expanded={aberto} aria-controls="menu-movel"
+      aria-label={aberto?'Fechar menu':'Abrir menu'} onClick={()=>setAberto(v=>!v)}><i/><i/></button>
+    <div className="mobile-menu" id="menu-movel" inert={!aberto}>
+      <nav aria-label="Navegação do celular">{navLinks.map(([href,rotulo],i)=>
+        <a key={href} href={href} style={{'--i':i}} data-secao={href}
+           onClick={()=>setAberto(false)}><span>{String(i+1).padStart(2,'0')}</span>{rotulo}</a>)}</nav>
+      <a className="mobile-menu-cta ms-btn" href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>setAberto(false)}><span>CHAMA NO WHATSAPP</span><ArrowUpRight size={16}/></a>
+      <p>(61) 99329-1126 · BRASÍLIA/DF</p>
+    </div>
+  </header>
+}
+
 function MouseGlow(){
   useEffect(()=>{
     if(window.matchMedia('(pointer: coarse)').matches)return undefined
@@ -198,13 +271,39 @@ function App(){
   useEffect(()=>{
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let playFinal=()=>{}
+    const fechados=[]
+    let redeTimer=0
     const ctx=gsap.context(()=>{
       gsap.timeline({defaults:{ease:'power3.out'}}).to('.loader-center i',{scaleX:1,duration:.6}).to('.loader',{yPercent:-100,duration:.9,ease:'power4.inOut'},.72).from('.site-header',{y:-90,duration:.65},1.18)
       if(!reduced){
         const hero=gsap.timeline({scrollTrigger:{trigger:'.hero-story',start:'top top',end:'bottom bottom',scrub:1}})
         hero.to('.scene-1',{autoAlpha:0,scale:1.08,duration:1}).fromTo('.scene-2',{autoAlpha:0,scale:1.08},{autoAlpha:1,scale:1,duration:1},'<').to('.scene-2',{autoAlpha:0,scale:1.07,duration:1}).fromTo('.scene-3',{autoAlpha:0,scale:1.08},{autoAlpha:1,scale:1,duration:1},'<')
         gsap.to('.hero-sticky .scene-bg',{xPercent:2.5,yPercent:-1.5,ease:'none',scrollTrigger:{trigger:'.hero-story',start:'top top',end:'bottom bottom',scrub:1}})
-        gsap.utils.toArray('[data-reveal]').forEach(el=>gsap.from(el,{opacity:0,y:40,duration:.85,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 87%',once:true}}))
+        /* `opaco:false` e para quem JA tem opacidade propria — o cartao de
+           servico vive em .37 e acende em 1 quando fica ativo. Se a entrada
+           terminasse cravando opacity:1, ela apagaria esse mecanismo. O
+           recorte sozinho ja esconde a peca, entao a opacidade nem faz falta. */
+        const fechado=opaco=>({...(opaco?{opacity:0}:{}),clipPath:'inset(42% 0 42% 0 round 18px)',
+          filter:'blur(9px) brightness(1.45) saturate(1.1)',y:18,z:-60,rotationX:10,scaleY:.86,
+          transformPerspective:1200,transformOrigin:'50% 100%'})
+        const aberto=opaco=>({...(opaco?{opacity:1}:{}),clipPath:'inset(-60% -60% -60% -60% round 0px)',
+          filter:'blur(0px) brightness(1) saturate(1)',y:0,z:0,rotationX:0,scaleY:1})
+        const revelar=(seletor,{opaco=true,escada=0,inicio='top 86%'}={})=>{
+          const itens=gsap.utils.toArray(seletor)
+          if(!itens.length)return
+          itens.forEach(el=>{
+            const grupo=escada?Array.from(el.children):[el]
+            gsap.set(grupo,fechado(opaco))
+            fechados.push([el,grupo,opaco])
+            gsap.to(grupo,{...aberto(opaco),duration:.92,ease:'power4.out',stagger:escada,
+              scrollTrigger:{trigger:el,start:inicio,once:true}})
+          })
+        }
+        revelar('[data-reveal]')
+        revelar('.service-entry',{opaco:false})
+        revelar('.stage-visual',{opaco:false})
+        revelar('.manifesto-media',{opaco:false})
+        revelar('.final-cta footer',{escada:.09,inicio:'top 95%'})
         gsap.utils.toArray('.service-entry').forEach((el,i)=>ScrollTrigger.create({trigger:el,start:'top 52%',end:'bottom 52%',onEnter:()=>setActiveService(i),onEnterBack:()=>setActiveService(i)}))
         gsap.utils.toArray('.contrast-step').forEach((el,i)=>ScrollTrigger.create({trigger:el,start:'top 55%',end:'bottom 55%',onEnter:()=>setContrastFrame(i),onEnterBack:()=>setContrastFrame(i)}))
         const ai=gsap.timeline({scrollTrigger:{trigger:'.ai-story',start:'top top',end:'bottom bottom',scrub:1}})
@@ -212,6 +311,10 @@ function App(){
         gsap.fromTo('.method-route-fill',{scaleX:0},{scaleX:1,ease:'none',scrollTrigger:{trigger:'.method-system',start:'top 75%',end:'bottom 45%',scrub:1}})
         gsap.utils.toArray('.method-card').forEach((el,i)=>gsap.from(el,{opacity:0,y:45,duration:.75,delay:i*.08,scrollTrigger:{trigger:el,start:'top 88%',once:true}}))
         gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:1}})
+        /* O feixe e o brilho da borda só rodam com a seção em cena. Animação
+           em laço fora de quadro é bateria queimada sem ninguém olhando. */
+        ScrollTrigger.create({trigger:'.type-manifesto',start:'top bottom',end:'bottom top',
+          onToggle:self=>document.querySelector('.type-manifesto')?.classList.toggle('cena-viva',self.isActive)})
         const finalReveal=gsap.utils.toArray('[data-final-reveal]')
         gsap.set(finalReveal,{opacity:0,clipPath:'inset(42% 0 42% 0 round 18px)',filter:'blur(9px) brightness(1.45) saturate(1.1)',y:18,z:-60,rotationX:10,scaleY:.86,transformPerspective:1200,transformOrigin:'50% 100%'})
         let finalPlayed=false
@@ -223,6 +326,25 @@ function App(){
         ScrollTrigger.create({trigger:'.final-v4',start:'top 72%',onEnter:playFinal,onEnterBack:playFinal,once:true})
       }
     },root)
+    /* REDE DE SEGURANÇA. A entrada por transformação deixa a peça
+       RECORTADA até o gatilho abrir — o que significa que um gatilho que
+       não dispara não degrada a animação: ele APAGA o conteúdo, e em
+       silêncio. Então qualquer peça que já esteja na tela e ainda esteja
+       fechada é aberta na marra. Custa um retângulo por item só enquanto
+       sobrar item fechado; quando a lista esvazia, o ouvinte sai. */
+    const abrirPresos=()=>{
+      for(let i=fechados.length-1;i>=0;i--){
+        const [el,grupo,opaco]=fechados[i]
+        const r=el.getBoundingClientRect()
+        if(r.bottom<=0||r.top>=innerHeight)continue
+        gsap.to(grupo,{...(opaco?{opacity:1}:{}),clipPath:'inset(-60% -60% -60% -60% round 0px)',
+          filter:'blur(0px) brightness(1) saturate(1)',y:0,z:0,rotationX:0,scaleY:1,
+          duration:.6,ease:'power3.out',overwrite:'auto'})
+        fechados.splice(i,1)
+      }
+      if(!fechados.length)removeEventListener('scroll',rede)
+    }
+    const rede=()=>{clearTimeout(redeTimer);redeTimer=setTimeout(abrirPresos,420)}
     const finalSafety=()=>{
       const section=document.querySelector('.final-v4')
       if(!section)return
@@ -230,8 +352,11 @@ function App(){
       if(rect.top<innerHeight&&rect.bottom>0)playFinal()
     }
     addEventListener('scroll',finalSafety,{passive:true})
+    addEventListener('scroll',rede,{passive:true})
     const safetyTimer=setTimeout(finalSafety,220)
-    return()=>{clearTimeout(safetyTimer);removeEventListener('scroll',finalSafety);ctx.revert()}
+    const redeInicial=setTimeout(abrirPresos,1400)
+    return()=>{clearTimeout(safetyTimer);clearTimeout(redeInicial);clearTimeout(redeTimer)
+      removeEventListener('scroll',finalSafety);removeEventListener('scroll',rede);ctx.revert()}
   },[])
   const current=services[activeService]
   const activeContrast=Math.floor(contrastFrame/2),contrastSolved=contrastFrame%2===1,currentContrast=contrast[activeContrast]
@@ -242,7 +367,7 @@ function App(){
     window.scrollTo({top:top+travel*((index*2)/(contrast.length*2-1)),behavior:'smooth'})
   }
   return <div ref={root} className="site-shell"><Loader/><MouseGlow/><AmbientField/><div className="page-noise"/>
-    <header className="site-header"><Brand/><nav aria-label="Navegação principal"><a href="#visao">VISÃO</a><a href="#servicos">SERVIÇOS</a><a href="#direcao">DIFERENÇA</a><a href="#inteligencia">IA</a><a href="#metodo">MÉTODO</a></nav><a className="header-cta ms-btn ms-btn-small" href={whatsapp} target="_blank" rel="noreferrer" data-cursor="CHAMAR"><span>CHAMA NO WHATSAPP</span><ArrowUpRight size={15}/></a></header>
+    <SiteHeader/>
     <main>
       <section className="hero-story" id="topo"><div className="hero-sticky" data-cursor="EXPLORAR">
         <div className="hero-scene scene-1"><img className="scene-bg" src="/art/hero-architecture-v3.webp" alt="Arquitetura digital criada para a Mind Sculptor"/><SignalOverlay variant="hero"/><div className="scene-shade"/><div className="scene-copy"><p>UMA AGÊNCIA COMPLETA · BRASÍLIA</p><h1>MARKETING QUE<br/><em>NÃO PASSA</em><br/>DESPERCEBIDO.</h1></div></div>
@@ -257,7 +382,7 @@ function App(){
       <section ref={contrastSection} className={'contrast contrast-v4 '+(contrastSolved?'is-solved':'is-problem')} id="direcao"><div className="contrast-stage"><div className="contrast-bg" key={currentContrast.image}><img className="contrast-bg-gray" src={currentContrast.image} alt=""/><img className="contrast-bg-color" src={currentContrast.image} alt=""/><div className="contrast-vignette"/></div><p className="contrast-title">04 / A DIFERENÇA NA PRÁTICA</p><div className="contrast-count"><span>0{activeContrast+1}</span><i>/</i><b>04</b><small>{contrastSolved?'COM A MIND':'SEM DIREÇÃO'}</small></div><div className="contrast-left"><small>SEM DIREÇÃO</small><h3>{currentContrast.bad}</h3></div><div className="contrast-logo" aria-hidden="true"><div className="logo-halo"/><div className="logo-rotor"><img className="logo-face logo-gray" src="/art/logo-head-gray-3d-v4.webp" alt=""/><img className="logo-face logo-color" src="/art/logo-head-color-3d-v4.webp" alt=""/></div><div className="contrast-line"/></div><div className="contrast-right"><small>COM A MIND</small><h3>{currentContrast.good}</h3><p>{currentContrast.copy}</p></div><ol className="contrast-index" aria-label="Etapas da comparação">{contrast.map((item,i)=><li key={item.bad}><button type="button" aria-current={i===activeContrast?'true':'false'} onClick={()=>goContrast(i)}><i>0{i+1}</i><span>{item.bad}</span></button></li>)}</ol><div className="contrast-instruction"><span>{contrastSolved?'RESULTADO ILUMINADO':'PROBLEMA IDENTIFICADO'}</span><i/><b>CONTINUE ROLANDO</b></div></div><div className="contrast-scroll">{contrast.flatMap((item,i)=>[<div className="contrast-step" key={`${item.bad}-problema`}><span>0{i+1}A</span></div>,<div className="contrast-step" key={`${item.bad}-solucao`}><span>0{i+1}B</span></div>])}</div></section>
       <AIStory/>
       <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
-      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
+      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><i className="mm-feixe" aria-hidden="true"/><i className="mm-borda mm-borda-topo" aria-hidden="true"/><i className="mm-borda mm-borda-esq" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
       <section className="final-cta final-v4" id="contato"><div className="final-mark">MIND</div><div className="final-content"><div className="final-copy"><p className="section-label" data-final-reveal>07 / DIAGNÓSTICO GRATUITO</p><h2 data-final-reveal>VAMOS OLHAR<br/>O SEU NEGÓCIO<br/><em>DE PERTO.</em></h2><p data-final-reveal>Preencha os campos. A conversa segue direto no WhatsApp com quem entende do assunto — sem robô e sem funil de vendedor.</p><ul className="diagnostic-list" data-final-reveal><li><Check size={16}/>Análise do seu perfil, site e presença digital atual</li><li><Check size={16}/>Os três gargalos que mais travam sua venda hoje</li><li><Check size={16}/>Proposta com escopo e valor fechados, se fizer sentido</li><li><Check size={16}/>Zero compromisso: se não for a hora, a gente fala isso</li></ul><a className="ms-btn ms-btn-dark" href={whatsapp} target="_blank" rel="noreferrer" data-final-reveal><span>PREFIRO CHAMAR DIRETO</span><ArrowUpRight size={18}/></a><p className="direct-contact" data-final-reveal>(61) 99329-1126 · BRASÍLIA/DF · TODO O BRASIL</p></div><ContactForm/></div><footer><Brand/><span>BRASÍLIA/DF · TODO O BRASIL</span><span>© 2026 MIND SCULPTOR</span></footer></section>
     </main>
     <a className="floating-whatsapp ms-btn" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Falar com a Mind Sculptor no WhatsApp"><MessageCircle size={18}/><span>WHATSAPP</span><ArrowUpRight size={15}/></a>
