@@ -59,46 +59,48 @@ function Loader(){return <div className="loader" aria-hidden="true"><div classNa
 
 function HeroDustMorph(){
   const canvasRef=useRef(null)
-  const logoRef=useRef(null)
   useEffect(()=>{
-    const canvas=canvasRef.current,hero=document.querySelector('.hero-story'),logo=logoRef.current
-    if(!canvas||!hero||!logo)return undefined
+    const canvas=canvasRef.current,hero=document.querySelector('.hero-story'),stage=document.querySelector('.hero-sticky')
+    const target=document.querySelector('.scene-2 h2'),sceneCopy=document.querySelector('.scene-2 .scene-copy')
+    if(!canvas||!hero||!stage||!target||!sceneCopy)return undefined
     const ctx=canvas.getContext('2d'),reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    let frame=0,alive=true,points=[],size=620,dpr=1,targetsReady=false,scrollProgress=0
+    let frame=0,alive=true,points=[],width=innerWidth,height=innerHeight,dpr=1,targetsReady=false,scrollProgress=0
     const clamp=n=>Math.max(0,Math.min(1,n))
     const smooth=t=>t*t*(3-2*t)
-    const resize=()=>{
-      size=Math.max(300,Math.min(720,canvas.getBoundingClientRect().width||620))
-      dpr=Math.min(window.devicePixelRatio||1,1.7)
-      canvas.width=Math.round(size*dpr);canvas.height=Math.round(size*dpr)
-      ctx.setTransform(dpr,0,0,dpr,0,0)
-    }
     const buildSphere=()=>{
-      const total=innerWidth<720?1500:2800,phi=Math.PI*(3-Math.sqrt(5))
+      const total=innerWidth<720?1700:3200,phi=Math.PI*(3-Math.sqrt(5))
       points=Array.from({length:total},(_,i)=>{
         const y=1-(i/(total-1))*2,r=Math.sqrt(Math.max(0,1-y*y)),a=phi*i
-        return {sx:Math.cos(a)*r,sy:y,sz:Math.sin(a)*r,tx:0,ty:0,tz:0,color:[215,146,11],seed:Math.random()*Math.PI*2}
+        return {sx:Math.cos(a)*r,sy:y,sz:Math.sin(a)*r,tx:0,ty:0,color:[244,237,227],seed:Math.random()*Math.PI*2,hot:Math.random()<.09}
       })
     }
-    const sampleLogo=()=>{
-      const img=new Image();img.decoding='async'
-      img.onload=()=>{
-        try{
-          const off=document.createElement('canvas'),max=210,scale=max/Math.max(img.width,img.height)
-          off.width=Math.max(2,Math.round(img.width*scale));off.height=Math.max(2,Math.round(img.height*scale))
-          const o=off.getContext('2d',{willReadFrequently:true});o.drawImage(img,0,0,off.width,off.height)
-          const data=o.getImageData(0,0,off.width,off.height).data,pool=[]
-          for(let y=0;y<off.height;y+=2)for(let x=0;x<off.width;x+=2){
-            const k=(y*off.width+x)*4
-            if(data[k+3]>105)pool.push({x:(x-off.width/2)/(Math.max(off.width,off.height)/2),y:(y-off.height/2)/(Math.max(off.width,off.height)/2),c:[data[k],data[k+1],data[k+2]]})
-          }
-          if(pool.length<80)return
-          for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]]}
-          points.forEach((p,i)=>{const t=pool[i%pool.length];p.tx=t.x*1.02;p.ty=t.y*1.02;p.tz=(Math.random()-.5)*.16;p.color=t.c})
-          targetsReady=true
-        }catch(_){targetsReady=false}
+    const sampleHeadline=()=>{
+      const stageRect=stage.getBoundingClientRect(),rect=target.getBoundingClientRect(),style=getComputedStyle(target)
+      if(rect.width<2||rect.height<2)return
+      const scale=.5,off=document.createElement('canvas')
+      off.width=Math.max(2,Math.round(width*scale));off.height=Math.max(2,Math.round(height*scale))
+      const o=off.getContext('2d',{willReadFrequently:true});o.scale(scale,scale)
+      const fontSize=parseFloat(style.fontSize),lineHeight=parseFloat(style.lineHeight)||fontSize*.84
+      o.font=`${style.fontWeight||400} ${fontSize}px ${style.fontFamily}`;o.textAlign='center';o.textBaseline='middle'
+      const centerX=rect.left-stageRect.left+rect.width/2,top=rect.top-stageRect.top
+      o.fillStyle='#F4EDE3';o.fillText('UMA MARCA INTEIRA.',centerX,top+lineHeight*.5)
+      o.fillStyle='#d7920b';o.fillText('NÃO PEÇAS SOLTAS.',centerX,top+lineHeight*1.5)
+      const data=o.getImageData(0,0,off.width,off.height).data,pool=[]
+      for(let y=0;y<off.height;y+=2)for(let x=0;x<off.width;x+=2){
+        const k=(y*off.width+x)*4
+        if(data[k+3]>105)pool.push({x:x/scale,y:y/scale,c:[data[k],data[k+1],data[k+2]]})
       }
-      img.src='/art/logo-head-color-3d-v4.webp'
+      if(pool.length<120)return
+      for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]]}
+      points.forEach((p,i)=>{const t=pool[i%pool.length];p.tx=t.x;p.ty=t.y;p.color=t.c})
+      targetsReady=true
+    }
+    const resize=()=>{
+      const rect=stage.getBoundingClientRect();width=Math.max(320,rect.width||innerWidth);height=Math.max(520,rect.height||innerHeight)
+      dpr=Math.min(window.devicePixelRatio||1,1.6)
+      canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr)
+      ctx.setTransform(dpr,0,0,dpr,0,0)
+      targetsReady=false;requestAnimationFrame(sampleHeadline)
     }
     const readScroll=()=>{
       const rect=hero.getBoundingClientRect(),travel=Math.max(1,hero.offsetHeight-innerHeight)
@@ -106,31 +108,35 @@ function HeroDustMorph(){
     }
     const draw=now=>{
       if(!alive)return
-      const morph=targetsReady?smooth(clamp((scrollProgress-.025)/.31)):0
-      const fade=1-smooth(clamp((scrollProgress-.34)/.14))
-      const angle=now*.00014*(1-morph*.62),tilt=-.18+morph*.12
+      const morph=targetsReady?smooth(clamp((scrollProgress-.045)/.255)):0
+      const materialize=smooth(clamp((scrollProgress-.285)/.125))
+      const dustAlpha=1-materialize*.98
+      sceneCopy.style.opacity=String(materialize)
+      sceneCopy.style.filter=`blur(${((1-materialize)*10).toFixed(2)}px)`
+      sceneCopy.style.transform=`translateY(${((1-materialize)*18).toFixed(2)}px)`
+      const angle=now*.00014*(1-morph*.72),tilt=-.18+morph*.14
       const ca=Math.cos(angle),sa=Math.sin(angle),ct=Math.cos(tilt),st=Math.sin(tilt)
-      ctx.clearRect(0,0,size,size);ctx.globalCompositeOperation='lighter'
-      const cx=size*.5,cy=size*.5,radius=size*(innerWidth<720?.31:.34)
+      ctx.clearRect(0,0,width,height);ctx.globalCompositeOperation='lighter'
+      const cx=width*(innerWidth<720?.54:.76),cy=height*.49,radius=Math.min(width,height)*(innerWidth<720?.24:.255)
       points.forEach(p=>{
-        const x=p.sx+(p.tx-p.sx)*morph,y=p.sy+(p.ty-p.sy)*morph,z=p.sz+(p.tz-p.sz)*morph
-        const x1=x*ca-z*sa,z1=x*sa+z*ca,y1=y*ct-z1*st,z2=y*st+z1*ct
-        const perspective=1/(1.58-z2*.32),px=cx+x1*radius*perspective,py=cy+y1*radius*perspective
-        const depth=.32+.68*(z2+1)/2,twinkle=.82+.18*Math.sin(now*.0018+p.seed)
-        const base=[222,196,163],col=p.color,rr=Math.round(base[0]+(col[0]-base[0])*morph),gg=Math.round(base[1]+(col[1]-base[1])*morph),bb=Math.round(base[2]+(col[2]-base[2])*morph)
-        ctx.beginPath();ctx.fillStyle=`rgba(${rr},${gg},${bb},${Math.max(.05,depth*twinkle*fade)})`;ctx.arc(px,py,(morph?1.15:1.35)*perspective,0,Math.PI*2);ctx.fill()
+        const x1=p.sx*ca-p.sz*sa,z1=p.sx*sa+p.sz*ca,y1=p.sy*ct-z1*st,z2=p.sy*st+z1*ct
+        const perspective=1/(1.58-z2*.32),sphereX=cx+x1*radius*perspective,sphereY=cy+y1*radius*perspective
+        const px=sphereX+(p.tx-sphereX)*morph,py=sphereY+(p.ty-sphereY)*morph
+        const depth=.32+.68*(z2+1)/2,twinkle=.8+.2*Math.sin(now*.0018+p.seed)
+        const base=p.hot?[215,146,11]:[222,196,163],col=p.color
+        const rr=Math.round(base[0]+(col[0]-base[0])*morph),gg=Math.round(base[1]+(col[1]-base[1])*morph),bb=Math.round(base[2]+(col[2]-base[2])*morph)
+        const alpha=Math.max(.025,depth*twinkle*dustAlpha)
+        ctx.beginPath();ctx.fillStyle=`rgba(${rr},${gg},${bb},${alpha})`;ctx.arc(px,py,(1.35-morph*.22)*perspective,0,Math.PI*2);ctx.fill()
       })
       ctx.globalCompositeOperation='source-over'
-      const sharp=smooth(clamp((morph-.72)/.28))*fade
-      logo.style.opacity=String(sharp);logo.style.transform=`translate(-50%,-50%) rotateY(${angle*.35}rad) scale(${.9+.1*sharp})`
       frame=requestAnimationFrame(draw)
     }
-    buildSphere();resize();sampleLogo();readScroll()
-    if(reduced){logo.style.opacity='1';logo.style.transform='translate(-50%,-50%)';return undefined}
+    buildSphere();resize();readScroll();document.fonts?.ready?.then(()=>{if(alive)sampleHeadline()})
+    if(reduced){sceneCopy.style.opacity='1';sceneCopy.style.filter='none';sceneCopy.style.transform='none';return undefined}
     addEventListener('resize',resize);addEventListener('scroll',readScroll,{passive:true});frame=requestAnimationFrame(draw)
-    return()=>{alive=false;cancelAnimationFrame(frame);removeEventListener('resize',resize);removeEventListener('scroll',readScroll)}
+    return()=>{alive=false;cancelAnimationFrame(frame);removeEventListener('resize',resize);removeEventListener('scroll',readScroll);sceneCopy.style.opacity='';sceneCopy.style.filter='';sceneCopy.style.transform=''}
   },[])
-  return <div className="hero-dust" aria-hidden="true"><canvas ref={canvasRef}/><img ref={logoRef} src="/art/logo-head-color-3d-v4.webp" alt=""/><span>POEIRA → MARCA</span></div>
+  return <div className="hero-dust" aria-hidden="true"><canvas ref={canvasRef}/><span>POEIRA → MENSAGEM</span></div>
 }
 
 function AmbientField(){return <div className="ambient-field" aria-hidden="true"><span className="ambient-orbit orbit-a"/><span className="ambient-orbit orbit-b"/><i className="ambient-beam beam-a"/><i className="ambient-beam beam-b"/><div className="ambient-nodes">{Array.from({length:14},(_,i)=><b key={i}/>)}</div></div>}
@@ -164,7 +170,18 @@ function ContactForm(){
     window.open(`${whatsapp}?text=${encodeURIComponent(lines.join('\n'))}`,'_blank','noopener,noreferrer')
     setStatus('Pronto! O WhatsApp abriu com sua mensagem. Respondemos em até 24h úteis.')
   }
-  return <form className="contact-form" onSubmit={submit} noValidate><div className="form-meta"><span>DIAGNÓSTICO GRATUITO</span><b>BRIEFING DIRETO</b></div><div className="form-row"><label><span>SEU NOME *</span><input name="nome" required autoComplete="name" placeholder="Como podemos chamar você?"/></label><label><span>WHATSAPP *</span><input name="telefone" required inputMode="tel" autoComplete="tel" placeholder="(61) 99999-9999"/></label></div><label><span>EMPRESA OU @ DO INSTAGRAM</span><input name="empresa" autoComplete="organization" placeholder="Nome da empresa ou perfil"/></label><label><span>O QUE VOCÊ PRECISA AGORA? *</span><select name="interesse" required defaultValue=""><option value="" disabled>Selecione</option><option>Gestão de redes sociais</option><option>Criação de conteúdo</option><option>Design e identidade visual</option><option>Site ou landing page</option><option>Aplicativo ou sistema</option><option>Tráfego pago</option><option>Tráfego orgânico / SEO</option><option>Treinamento em IA para a equipe</option><option>Gestão completa de marketing</option><option>Ainda não sei — preciso de ajuda</option></select></label><label><span>INVESTIMENTO MENSAL PREVISTO</span><select name="investimento" defaultValue=""><option value="">Selecione</option><option>Ainda estou avaliando</option><option>Até R$ 1.500 / mês</option><option>R$ 1.500 a R$ 3.000 / mês</option><option>R$ 3.000 a R$ 6.000 / mês</option><option>Acima de R$ 6.000 / mês</option></select></label><label><span>QUAL O SEU OBJETIVO EM UMA FRASE?</span><textarea name="objetivo" rows="2" placeholder="O que precisa mudar primeiro?"/></label><input className="form-hp" type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true"/><label className="form-consent"><input type="checkbox" name="consentimento" required/><span>Autorizo a Mind Sculptor a entrar em contato pelo WhatsApp com as informações que enviei.</span></label><button className="ms-btn" type="submit"><span>ENVIAR E FALAR NO WHATSAPP</span><ArrowUpRight size={18}/></button><small className="form-status" aria-live="polite">{status}</small></form>
+  return <form className="contact-form" onSubmit={submit} noValidate data-final-reveal>
+    <div className="form-meta" data-final-reveal><span>DIAGNÓSTICO GRATUITO</span><b>BRIEFING DIRETO</b></div>
+    <div className="form-row" data-final-reveal><label><span>SEU NOME *</span><input name="nome" required autoComplete="name" placeholder="Como podemos chamar você?"/></label><label><span>WHATSAPP *</span><input name="telefone" required inputMode="tel" autoComplete="tel" placeholder="(61) 99999-9999"/></label></div>
+    <label data-final-reveal><span>EMPRESA OU @ DO INSTAGRAM</span><input name="empresa" autoComplete="organization" placeholder="Nome da empresa ou perfil"/></label>
+    <label data-final-reveal><span>O QUE VOCÊ PRECISA AGORA? *</span><select name="interesse" required defaultValue=""><option value="" disabled>Selecione</option><option>Gestão de redes sociais</option><option>Criação de conteúdo</option><option>Design e identidade visual</option><option>Site ou landing page</option><option>Aplicativo ou sistema</option><option>Tráfego pago</option><option>Tráfego orgânico / SEO</option><option>Treinamento em IA para a equipe</option><option>Gestão completa de marketing</option><option>Ainda não sei — preciso de ajuda</option></select></label>
+    <label data-final-reveal><span>INVESTIMENTO MENSAL PREVISTO</span><select name="investimento" defaultValue=""><option value="">Selecione</option><option>Ainda estou avaliando</option><option>Até R$ 1.500 / mês</option><option>R$ 1.500 a R$ 3.000 / mês</option><option>R$ 3.000 a R$ 6.000 / mês</option><option>Acima de R$ 6.000 / mês</option></select></label>
+    <label data-final-reveal><span>QUAL O SEU OBJETIVO EM UMA FRASE?</span><textarea name="objetivo" rows="2" placeholder="O que precisa mudar primeiro?"/></label>
+    <input className="form-hp" type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true"/>
+    <label className="form-consent" data-final-reveal><input type="checkbox" name="consentimento" required/><span>Autorizo a Mind Sculptor a entrar em contato pelo WhatsApp com as informações que enviei.</span></label>
+    <button className="ms-btn" type="submit" data-final-reveal><span>ENVIAR E FALAR NO WHATSAPP</span><ArrowUpRight size={18}/></button>
+    <small className="form-status" aria-live="polite" data-final-reveal>{status}</small>
+  </form>
 }
 
 function AIStory(){
@@ -180,6 +197,7 @@ function App(){
   const [activeService,setActiveService]=useState(0),[contrastFrame,setContrastFrame]=useState(0)
   useEffect(()=>{
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let playFinal=()=>{}
     const ctx=gsap.context(()=>{
       gsap.timeline({defaults:{ease:'power3.out'}}).to('.loader-center i',{scaleX:1,duration:.6}).to('.loader',{yPercent:-100,duration:.9,ease:'power4.inOut'},.72).from('.site-header',{y:-90,duration:.65},1.18)
       if(!reduced){
@@ -194,9 +212,26 @@ function App(){
         gsap.fromTo('.method-route-fill',{scaleX:0},{scaleX:1,ease:'none',scrollTrigger:{trigger:'.method-system',start:'top 75%',end:'bottom 45%',scrub:1}})
         gsap.utils.toArray('.method-card').forEach((el,i)=>gsap.from(el,{opacity:0,y:45,duration:.75,delay:i*.08,scrollTrigger:{trigger:el,start:'top 88%',once:true}}))
         gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:1}})
+        const finalReveal=gsap.utils.toArray('[data-final-reveal]')
+        gsap.set(finalReveal,{opacity:0,clipPath:'inset(42% 0 42% 0 round 18px)',filter:'blur(9px) brightness(1.45) saturate(1.1)',y:18,z:-60,rotationX:10,scaleY:.86,transformPerspective:1200,transformOrigin:'50% 100%'})
+        let finalPlayed=false
+        playFinal=()=>{
+          if(finalPlayed)return
+          finalPlayed=true
+          gsap.to(finalReveal,{opacity:1,clipPath:'inset(-60% -60% -60% -60% round 0px)',filter:'blur(0px) brightness(1) saturate(1)',y:0,z:0,rotationX:0,scaleY:1,duration:.92,ease:'power4.out',stagger:.075,overwrite:'auto'})
+        }
+        ScrollTrigger.create({trigger:'.final-v4',start:'top 72%',onEnter:playFinal,onEnterBack:playFinal,once:true})
       }
     },root)
-    return()=>ctx.revert()
+    const finalSafety=()=>{
+      const section=document.querySelector('.final-v4')
+      if(!section)return
+      const rect=section.getBoundingClientRect()
+      if(rect.top<innerHeight&&rect.bottom>0)playFinal()
+    }
+    addEventListener('scroll',finalSafety,{passive:true})
+    const safetyTimer=setTimeout(finalSafety,220)
+    return()=>{clearTimeout(safetyTimer);removeEventListener('scroll',finalSafety);ctx.revert()}
   },[])
   const current=services[activeService]
   const activeContrast=Math.floor(contrastFrame/2),contrastSolved=contrastFrame%2===1,currentContrast=contrast[activeContrast]
@@ -221,9 +256,9 @@ function App(){
       <section className="work" id="trabalhos"><div className="work-head" data-reveal><p className="section-label">03 / CENAS ORIGINAIS</p><h2>A IMAGEM NÃO<br/><em>DECORA A IDEIA.</em><br/>ELA É A IDEIA.</h2></div><div className="work-grid">{scenes.map(([src,label],i)=><figure className={'work-card work-'+(i+1)} key={src} data-reveal data-tilt data-cursor="VER"><img src={src} alt={label}/><figcaption><span>0{i+1}</span><b>{label}</b><ArrowUpRight size={17}/></figcaption></figure>)}</div></section>
       <section ref={contrastSection} className={'contrast contrast-v4 '+(contrastSolved?'is-solved':'is-problem')} id="direcao"><div className="contrast-stage"><div className="contrast-bg" key={currentContrast.image}><img className="contrast-bg-gray" src={currentContrast.image} alt=""/><img className="contrast-bg-color" src={currentContrast.image} alt=""/><div className="contrast-vignette"/></div><p className="contrast-title">04 / A DIFERENÇA NA PRÁTICA</p><div className="contrast-count"><span>0{activeContrast+1}</span><i>/</i><b>04</b><small>{contrastSolved?'COM A MIND':'SEM DIREÇÃO'}</small></div><div className="contrast-left"><small>SEM DIREÇÃO</small><h3>{currentContrast.bad}</h3></div><div className="contrast-logo" aria-hidden="true"><div className="logo-halo"/><div className="logo-rotor"><img className="logo-face logo-gray" src="/art/logo-head-gray-3d-v4.webp" alt=""/><img className="logo-face logo-color" src="/art/logo-head-color-3d-v4.webp" alt=""/></div><div className="contrast-line"/></div><div className="contrast-right"><small>COM A MIND</small><h3>{currentContrast.good}</h3><p>{currentContrast.copy}</p></div><ol className="contrast-index" aria-label="Etapas da comparação">{contrast.map((item,i)=><li key={item.bad}><button type="button" aria-current={i===activeContrast?'true':'false'} onClick={()=>goContrast(i)}><i>0{i+1}</i><span>{item.bad}</span></button></li>)}</ol><div className="contrast-instruction"><span>{contrastSolved?'RESULTADO ILUMINADO':'PROBLEMA IDENTIFICADO'}</span><i/><b>CONTINUE ROLANDO</b></div></div><div className="contrast-scroll">{contrast.flatMap((item,i)=>[<div className="contrast-step" key={`${item.bad}-problema`}><span>0{i+1}A</span></div>,<div className="contrast-step" key={`${item.bad}-solucao`}><span>0{i+1}B</span></div>])}</div></section>
       <AIStory/>
-      <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b><ArrowUpRight size={17}/></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
-      <section className="type-manifesto"><div className="manifesto-type" data-reveal><span>VALOR</span><b>&gt;&gt;&gt;</b><span>NÃO</span><i>[ 01 ]</i><span>É</span><u>_</u><span>EXPLICADO.</span><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
-      <section className="final-cta final-v4" id="contato"><div className="final-mark">MIND</div><div className="final-content"><div className="final-copy" data-reveal><p className="section-label">07 / DIAGNÓSTICO GRATUITO</p><h2>VAMOS OLHAR<br/>O SEU NEGÓCIO<br/><em>DE PERTO.</em></h2><p>Preencha os campos. A conversa segue direto no WhatsApp com quem entende do assunto — sem robô e sem funil de vendedor.</p><ul className="diagnostic-list"><li><Check size={16}/>Análise do seu perfil, site e presença digital atual</li><li><Check size={16}/>Os três gargalos que mais travam sua venda hoje</li><li><Check size={16}/>Proposta com escopo e valor fechados, se fizer sentido</li><li><Check size={16}/>Zero compromisso: se não for a hora, a gente fala isso</li></ul><a className="ms-btn ms-btn-dark" href={whatsapp} target="_blank" rel="noreferrer"><span>PREFIRO CHAMAR DIRETO</span><ArrowUpRight size={18}/></a><p className="direct-contact">(61) 99329-1126 · BRASÍLIA/DF · TODO O BRASIL</p></div><ContactForm/></div><footer><Brand/><span>BRASÍLIA/DF · TODO O BRASIL</span><span>© 2026 MIND SCULPTOR</span></footer></section>
+      <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
+      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
+      <section className="final-cta final-v4" id="contato"><div className="final-mark">MIND</div><div className="final-content"><div className="final-copy"><p className="section-label" data-final-reveal>07 / DIAGNÓSTICO GRATUITO</p><h2 data-final-reveal>VAMOS OLHAR<br/>O SEU NEGÓCIO<br/><em>DE PERTO.</em></h2><p data-final-reveal>Preencha os campos. A conversa segue direto no WhatsApp com quem entende do assunto — sem robô e sem funil de vendedor.</p><ul className="diagnostic-list" data-final-reveal><li><Check size={16}/>Análise do seu perfil, site e presença digital atual</li><li><Check size={16}/>Os três gargalos que mais travam sua venda hoje</li><li><Check size={16}/>Proposta com escopo e valor fechados, se fizer sentido</li><li><Check size={16}/>Zero compromisso: se não for a hora, a gente fala isso</li></ul><a className="ms-btn ms-btn-dark" href={whatsapp} target="_blank" rel="noreferrer" data-final-reveal><span>PREFIRO CHAMAR DIRETO</span><ArrowUpRight size={18}/></a><p className="direct-contact" data-final-reveal>(61) 99329-1126 · BRASÍLIA/DF · TODO O BRASIL</p></div><ContactForm/></div><footer><Brand/><span>BRASÍLIA/DF · TODO O BRASIL</span><span>© 2026 MIND SCULPTOR</span></footer></section>
     </main>
     <a className="floating-whatsapp ms-btn" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Falar com a Mind Sculptor no WhatsApp"><MessageCircle size={18}/><span>WHATSAPP</span><ArrowUpRight size={15}/></a>
   </div>
