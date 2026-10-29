@@ -651,19 +651,121 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
 .ab code{display:block;margin-top:1.4rem;font-family:var(--f-util);font-size:.78rem;
   letter-spacing:.14em;color:var(--apoio-txt)}
 
-/* comparação */
-.vs{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;margin-top:2.6rem}
-.vs__col{padding:1.6rem 1.5rem;border-radius:14px;background:var(--caixa);
-  box-shadow:inset 0 0 0 1px var(--linha)}
-.vs__col h4{font-family:var(--f-util);font-weight:600;font-size:.84rem;letter-spacing:.16em;
-  margin:0 0 1.2rem;color:var(--fg-2)}
-.vs__col ul{list-style:none;margin:0;padding:0;display:grid;gap:.9rem}
-.vs__col li{display:grid;grid-template-columns:auto 1fr;gap:.75rem;align-items:start;
-  font-size:.98rem;line-height:1.46;color:var(--fg-2)}
-.vs__col i{font-style:normal;font-weight:600;width:18px;text-align:center}
-.vs__col.a i{color:var(--apoio)}
-.vs__col.b i{color:var(--ambar)}
-.vs__col.b{box-shadow:inset 0 0 0 1px rgba(185,138,62,.3)}
+/* ---------------------------------------------------------------------
+   CONFRONTO — a seção que se segura na tela e troca de assunto.
+
+   Lido no titangatequity.com e reescrito aqui. Lá são 3.481px de corrida
+   com as duas colunas presas e o conteúdo trocando por baixo. O mecanismo
+   vale porque resolve um problema real da lista "nós × eles": com doze
+   itens lado a lado o leitor varre e não lê nenhum; com quatro pares, um
+   por vez, ele lê os quatro.
+
+   Três decisões que NÃO são do site deles:
+   · o índice 01–04 é botão de verdade. Ficar preso numa seção sem poder
+     sair é armadilha, não efeito — aqui ele pula para o par que quiser.
+   · no celular não há duas colunas nem corrida: os quatro pares viram
+     quatro blocos empilhados. Prender 340vh num telefone é sequestro.
+   · o par apagado sai do alcance do ponteiro. Sem isso o cartão invisível
+     de cima rouba o clique do cartão visível — e o bug é mudo.
+   --------------------------------------------------------------------- */
+#confronto{--passo:80vh;height:calc(100svh + 3 * var(--passo))}
+.conf__palco{position:sticky;top:0;min-height:100svh;display:grid;align-content:center;
+  padding-block:calc(62px + clamp(20px,4vh,48px)) clamp(28px,5vh,64px)}
+.conf__rotulo{font-family:var(--f-util);font-weight:600;font-size:.9rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--fg-2);margin:.8rem 0 0}
+.conf__rotulo span{color:var(--acento-txt)}
+
+.conf__indice{list-style:none;margin:clamp(16px,2.6vh,28px) 0 0;padding:0;
+  display:flex;flex-wrap:wrap;gap:.5rem}
+.conf__indice button{font-family:var(--f-util);font-weight:600;font-size:.78rem;
+  letter-spacing:.14em;text-transform:uppercase;display:inline-flex;align-items:center;
+  gap:.55rem;padding:.5rem .95rem;border-radius:999px;border:1px solid var(--linha);
+  background:transparent;color:var(--fg-2);cursor:pointer;
+  transition:color .3s linear,border-color .3s linear,background-color .3s linear}
+.conf__indice button i{font-style:normal;opacity:.55;font-variant-numeric:tabular-nums}
+.conf__indice button:not([aria-current="true"]):hover{color:var(--fg);border-color:var(--acento)}
+.conf__indice button[aria-current="true"]{color:var(--tinta);background:var(--areia);
+  border-color:var(--areia)}
+.conf__indice button[aria-current="true"] i{opacity:.7}
+
+.conf__pares{display:grid;margin-top:clamp(26px,4.5vh,54px)}
+.conf__par{grid-area:1/1;display:grid;grid-template-columns:5fr 6fr;
+  gap:clamp(24px,4.5vw,64px);align-items:center;
+  opacity:0;pointer-events:none;transform:translateY(20px) scale(.985);filter:blur(6px);
+  transition:opacity .5s var(--ease-out),transform .62s var(--ease-out),filter .5s linear}
+.conf__par.vivo{opacity:1;pointer-events:auto;transform:none;filter:none}
+.conf__titulo{font-family:var(--f-display);font-weight:400;
+  font-size:clamp(2.2rem,4.6vw,3.7rem);line-height:.92;letter-spacing:.004em;margin:0}
+.conf__titulo em{display:block;font-style:normal;color:var(--fg-2);opacity:.6}
+
+.conf__cartoes{display:grid;gap:clamp(12px,1.6vh,18px)}
+.conf__cartao{padding:clamp(20px,2.4vw,32px);border-radius:14px;display:grid;gap:.6rem}
+.conf__cartao h4{font-family:var(--f-util);font-weight:600;font-size:.8rem;
+  letter-spacing:.2em;text-transform:uppercase;margin:0;color:var(--acento-txt)}
+.conf__cartao p{margin:0;font-size:clamp(1rem,1.2vw,1.1rem);line-height:1.48;color:var(--fg-2)}
+
+/* O nosso cartão é a areia saindo do escuro: o capítulo claro do site
+   reaparece aqui como OBJETO, com espessura de latão na borda e sombra
+   marrom — não como um fundo colorido. Os tokens de areia entram locais
+   porque a seção é escura: sem isso o âmbar cairia sobre areia (1,6:1). */
+.conf__cartao.e-nosso{--fg-2:var(--tinta-2);--acento-txt:#8F2F05;
+  background:linear-gradient(168deg,var(--areia-luz),var(--areia) 58%,var(--areia-sombra));
+  color:var(--tinta);
+  box-shadow:0 20px 46px -20px rgba(var(--sombra-rgb)/.8),
+             inset 0 0 0 1px rgba(185,138,62,.55)}
+.conf__cartao.e-velho{--acento-txt:var(--apoio-txt);
+  background:var(--caixa);box-shadow:inset 0 0 0 1px var(--linha)}
+
+/* ---------------------------------------------------------------------
+   MICRO-DECLARAÇÃO — o mesmo motor do texto que acende, em escala de
+   nota de rodapé. No titangatequity.com são 75 palavras de 9,6px com
+   1,28px de entreletra acendendo uma a uma; o efeito funciona porque o
+   tamanho obriga a desacelerar. A dose aqui é uma frase só: repetir isso
+   em toda seção transformaria o site num letreiro.
+   --------------------------------------------------------------------- */
+.micro-fala{font-family:var(--f-util);font-weight:600;font-size:.72rem;
+  letter-spacing:.17em;text-transform:uppercase;line-height:2.1;
+  max-width:52ch;margin:0 auto;text-align:center;color:var(--texto)}
+.micro-fala .w.viva{color:var(--acento)}
+
+/* ---------------------------------------------------------------------
+   FIO — a guia vertical que se desenha. Lá são sete `svg-guideline`
+   ligando as seções; é o que dá ao site a cara de peça desenhada em
+   prancheta e não de página empilhada. Aqui ela se desenha de cima para
+   baixo quando entra (scaleY), que é a regra da casa: transformar, não
+   aparecer.
+   --------------------------------------------------------------------- */
+.fio{display:block;width:1px;height:clamp(54px,8vh,104px);margin:0 auto;
+  background:linear-gradient(var(--acento),var(--linha) 55%,transparent);
+  transform:scaleY(0);transform-origin:top;
+  transition:transform .95s var(--ease-out)}
+.fio.in{transform:scaleY(1)}
+
+@media (max-width:900px){
+  #confronto{height:auto;padding-block:var(--sec-y)}
+  .conf__palco{position:static;min-height:0;padding-block:0}
+  .conf__indice{display:none}
+  .conf__pares{display:block;margin-top:clamp(24px,4vh,40px)}
+  .conf__par{grid-template-columns:1fr;gap:1rem;opacity:1;pointer-events:auto;
+    transform:none;filter:none;margin-bottom:clamp(36px,6vh,64px)}
+  .conf__titulo{font-size:clamp(1.9rem,8.6vw,2.6rem)}
+}
+
+/* ---------------------------------------------------------------------
+   NUMERAL FANTASMA — textura, não informação.
+   No titangatequity.com o "01" tem 172px em #141414 sobre preto: 1,2:1,
+   quase invisível, e é justamente por isso que funciona — ele dá escala
+   à coluna sem competir com o texto. Sobre areia o equivalente não é um
+   cinza: é a própria sombra da areia, de modo que o número lê como
+   RELEVO e não como texto apagado.
+   O rótulo pequeno virou só "Etapa": com o numeral gigante ao lado,
+   escrever "Etapa 01" era dizer o número duas vezes em 100px.
+   --------------------------------------------------------------------- */
+.metodo__etapas li{position:relative;isolation:isolate}
+.metodo__etapas li::before{content:"0" attr(data-etapa);position:absolute;
+  left:-.05em;top:-.34em;z-index:-1;pointer-events:none;
+  font-family:var(--f-display);font-weight:400;font-size:clamp(78px,10vw,158px);
+  line-height:.8;letter-spacing:-.03em;color:var(--areia-sombra);opacity:.52}
 
 /* FAQ */
 .faq{margin-top:2.4rem;border-top:1px solid var(--linha)}
@@ -775,6 +877,15 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
   html.tem-cursor,html.tem-cursor a,html.tem-cursor button{cursor:auto}
   #hero{height:auto}
   #hero .palco{position:static;height:auto;padding-block:var(--sec-y)}
+  /* a seção pinada desprende igual ao herói: sem rolagem suave, ficar
+     preso em 340vh deixa de ser leitura e vira labirinto */
+  #confronto{height:auto;padding-block:var(--sec-y)}
+  .conf__palco{position:static;min-height:0;padding-block:0}
+  .conf__indice{display:none}
+  .conf__pares{display:block}
+  .conf__par{opacity:1!important;pointer-events:auto!important;transform:none!important;
+    filter:none!important;margin-bottom:clamp(36px,6vh,64px)}
+  .fio{transform:none!important}
   #orbe,.aura,.dica{display:none}
   .acende .w{opacity:1!important}
   .hero-olho{opacity:.8;transform:none}
@@ -1048,16 +1159,16 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
       </div>
 
       <ol class="metodo__etapas">
-        <li data-etapa="1" class="rv"><b>Etapa 01</b><h3>Diagnóstico</h3>
+        <li data-etapa="1" class="rv"><b>Etapa</b><h3>Diagnóstico</h3>
           <p>Entendemos seu negócio, sua margem, seu cliente e o que já foi tentado. Antes de
             propor, a gente escuta e mede.</p></li>
-        <li data-etapa="2" class="rv"><b>Etapa 02</b><h3>Estratégia</h3>
+        <li data-etapa="2" class="rv"><b>Etapa</b><h3>Estratégia</h3>
           <p>Definimos posicionamento, oferta, canais e metas. Você recebe um plano com
             prioridade clara — não uma lista de desejos.</p></li>
-        <li data-etapa="3" class="rv"><b>Etapa 03</b><h3>Execução</h3>
+        <li data-etapa="3" class="rv"><b>Etapa</b><h3>Execução</h3>
           <p>Conteúdo, design, páginas e campanhas saindo no ritmo combinado, com um time só
             respondendo por tudo.</p></li>
-        <li data-etapa="4" class="rv"><b>Etapa 04</b><h3>Escala</h3>
+        <li data-etapa="4" class="rv"><b>Etapa</b><h3>Escala</h3>
           <p>Lemos os dados, cortamos o que não performa e ampliamos o que dá lucro. Todo mês
             melhor que o anterior.</p></li>
       </ol>
@@ -1107,33 +1218,84 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
   </div>
 </section>
 
-<!-- ======================= COMPARAÇÃO ======================= -->
-<section data-tema="escuro" style="padding-block:var(--sec-y)">
+<!-- ============ MICRO-DECLARAÇÃO: a frase que acende em miúdo ============ -->
+<section data-tema="escuro" style="padding-block:clamp(56px,9vh,104px)">
   <div class="shell">
-    <p class="olho rv">A diferença na prática</p>
-    <h2 class="rv tw" style="--i:1">Marketing solto <span class="ancora">× Mind Sculptor</span></h2>
-    <div class="vs">
-      <div class="vs__col a rv">
-        <h4>Do jeito que costuma ser</h4>
-        <ul>
-          <li><i>×</i>Vários fornecedores, nenhum responsável pelo resultado</li>
-          <li><i>×</i>Post publicado porque "precisa postar hoje"</li>
-          <li><i>×</i>Anúncio no impulso, sem leitura de dados</li>
-          <li><i>×</i>Relatório com curtida e alcance — sem venda</li>
-          <li><i>×</i>Site bonito que ninguém acha e ninguém preenche</li>
-          <li><i>×</i>Você refém de quem faz</li>
-        </ul>
-      </div>
-      <div class="vs__col b rv" style="--i:1">
-        <h4>Do jeito que a gente faz</h4>
-        <ul>
-          <li><i>✓</i>Um time só, com estratégia, criação e mídia conversando</li>
-          <li><i>✓</i>Calendário que segue um objetivo comercial</li>
-          <li><i>✓</i>Verba acompanhada de perto, com corte e escala</li>
-          <li><i>✓</i>Relatório de lead, custo por conversão e retorno</li>
-          <li><i>✓</i>Página construída para o clique virar contato</li>
-          <li><i>✓</i>Sua equipe treinada e autônoma com IA</li>
-        </ul>
+    <i class="fio" aria-hidden="true"></i>
+    <p class="micro-fala acende" style="margin-top:clamp(26px,4vh,44px)">Onde todo mundo
+      posta, a gente pergunta por quê. Onde todo mundo mede curtida, a gente mede caixa.
+      É só isso — e é tudo.</p>
+  </div>
+</section>
+
+<!-- ======================= CONFRONTO (pinado) ======================= -->
+<section id="confronto" data-tema="escuro" class="conf">
+  <div class="conf__palco">
+    <div class="shell">
+      <i class="fio" aria-hidden="true" style="height:clamp(34px,5vh,62px)"></i>
+      <p class="olho" style="margin-top:clamp(18px,3vh,32px)">A diferença na prática</p>
+      <h2 class="conf__rotulo">Marketing solto <span>× Mind Sculptor</span></h2>
+
+      <ol class="conf__indice">
+      <li><button type="button" aria-current="true"><i>01</i> Responsabilidade</button></li>
+      <li><button type="button" aria-current="false"><i>02</i> Direção</button></li>
+      <li><button type="button" aria-current="false"><i>03</i> Leitura</button></li>
+      <li><button type="button" aria-current="false"><i>04</i> Autonomia</button></li>
+      </ol>
+
+      <div class="conf__pares">
+      <article class="conf__par vivo">
+        <h3 class="conf__titulo">Responsabilidade<em>× terceirização</em></h3>
+        <div class="conf__cartoes">
+          <div class="conf__cartao e-nosso">
+            <h4>Mind Sculptor</h4>
+            <p>Um time só, com estratégia, criação e mídia conversando na mesma sala. Uma pessoa responde pelo resultado — e ela tem nome.</p>
+          </div>
+          <div class="conf__cartao e-velho">
+            <h4>Do jeito que costuma ser</h4>
+            <p>Vários fornecedores, nenhum responsável pelo resultado. Quando o número cai, cada um aponta para o outro.</p>
+          </div>
+        </div>
+      </article>
+      <article class="conf__par">
+        <h3 class="conf__titulo">Direção<em>× calendário cego</em></h3>
+        <div class="conf__cartoes">
+          <div class="conf__cartao e-nosso">
+            <h4>Mind Sculptor</h4>
+            <p>Calendário que segue um objetivo comercial. Cada peça existe porque empurra uma venda específica, não porque a data chegou.</p>
+          </div>
+          <div class="conf__cartao e-velho">
+            <h4>Do jeito que costuma ser</h4>
+            <p>Post publicado porque “precisa postar hoje”. O feed enche, o caixa não.</p>
+          </div>
+        </div>
+      </article>
+      <article class="conf__par">
+        <h3 class="conf__titulo">Leitura<em>× impulso</em></h3>
+        <div class="conf__cartoes">
+          <div class="conf__cartao e-nosso">
+            <h4>Mind Sculptor</h4>
+            <p>Verba acompanhada de perto, com corte no que não anda e escala no que dá lucro. Relatório de lead, custo por conversão e retorno.</p>
+          </div>
+          <div class="conf__cartao e-velho">
+            <h4>Do jeito que costuma ser</h4>
+            <p>Anúncio no impulso, sem leitura de dados. Relatório de curtida e alcance — números que não pagam conta.</p>
+          </div>
+        </div>
+      </article>
+      <article class="conf__par">
+        <h3 class="conf__titulo">Autonomia<em>× dependência</em></h3>
+        <div class="conf__cartoes">
+          <div class="conf__cartao e-nosso">
+            <h4>Mind Sculptor</h4>
+            <p>Página construída para o clique virar contato, e sua equipe treinada para tocar a IA sozinha depois que a gente sai.</p>
+          </div>
+          <div class="conf__cartao e-velho">
+            <h4>Do jeito que costuma ser</h4>
+            <p>Site bonito que ninguém acha e ninguém preenche. E você refém de quem faz.</p>
+          </div>
+        </div>
+      </article>
       </div>
     </div>
   </div>
@@ -1358,6 +1520,61 @@ if (acendem.length) {
   acender();
 }
 
+/* ==========================================================================
+   CONFRONTO — a seção que se segura e troca de assunto.
+   A corrida é a altura da seção menos uma tela; o progresso dentro dela
+   escolhe qual par está vivo. `Math.round` e não `|0`: com piso, o último
+   par só apareceria no último pixel da seção.
+
+   Duas armadilhas desta seção:
+   · `offsetTop` mente se algum ancestral tiver transform — a conta de
+     rolagem usa o retângulo somado ao scrollY, que não depende disso.
+   · abaixo de 900px o CSS desprende a seção; o motor sai do caminho em
+     vez de continuar marcando um par, senão a classe `.vivo` brigaria
+     com a pilha do celular.
+   ========================================================================== */
+const conf = $('#confronto');
+if (conf) {
+  const pares = $$('.conf__par', conf);
+  const chips = $$('.conf__indice button', conf);
+  const N = pares.length;
+  let vivo = 0;
+
+  const mostrar = i => {
+    i = i < 0 ? 0 : i > N - 1 ? N - 1 : i;
+    if (i === vivo) return;
+    vivo = i;
+    pares.forEach((el, k) => el.classList.toggle('vivo', k === i));
+    chips.forEach((b, k) => b.setAttribute('aria-current', k === i ? 'true' : 'false'));
+  };
+  const corridaCf = () => conf.offsetHeight - innerHeight;
+
+  /* Sem requestAnimationFrame de proposito. Medido com o painel do
+     navegador escondido: o rAF cai para 2fps e o par vivo fica meio
+     segundo atras da rolagem — aba de fundo, economia de bateria e
+     janela coberta fazem o mesmo. Uma leitura de retangulo por evento
+     e o mesmo preco que o `acender()` aqui em cima ja paga. */
+  function lerConfronto() {
+    const total = corridaCf();
+    if (total <= 0 || innerWidth <= 900) return;
+    mostrar(Math.round(clamp01(-conf.getBoundingClientRect().top / total) * (N - 1)));
+  }
+  if (!reduz) {
+    addEventListener('scroll', lerConfronto, { passive: true });
+    addEventListener('resize', lerConfronto);
+    lerConfronto();
+  }
+
+  /* O índice é botão de verdade: ficar preso numa seção sem poder sair é
+     armadilha. Clicar rola até a fatia daquele par. */
+  chips.forEach((b, k) => b.addEventListener('click', () => {
+    const total = corridaCf();
+    if (total <= 0) return;
+    const topo = conf.getBoundingClientRect().top + scrollY;
+    scrollTo({ top: topo + total * (k / (N - 1)), behavior: reduz ? 'auto' : 'smooth' });
+  }));
+}
+
 /* ATENÇÃO: threshold TEM que ser 0. O IntersectionObserver mede a área DEPOIS
    de aplicar o clip-path do próprio elemento, e a entrada começa em
    `inset(42% 0)` — só 16% do bloco conta como visível. Qualquer threshold
@@ -1366,7 +1583,7 @@ if (acendem.length) {
 const io = new IntersectionObserver(es => {
   for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
 }, { threshold: 0, rootMargin: '0px 0px -14% 0px' });
-$$('.rv, #ab').forEach(el => io.observe(el));
+$$('.rv, #ab, .fio').forEach(el => io.observe(el));
 
 /* Rede de segurança: numa rolagem muito rápida (barra arrastada, âncora da nav,
    tecla Fim) o observer pode não entregar a tempo. getBoundingClientRect IGNORA
@@ -2093,12 +2310,23 @@ if (form) form.addEventListener('submit', e => {
    O LAÇO
    ========================================================================== */
 let ultimo = performance.now();
+/* O heroi so desenha enquanto esta na tela. Sem esta trava o laco segue
+   varrendo 34 mil particulas enquanto o leitor esta no FAQ, dez mil pixels
+   abaixo: trabalho jogado fora em quase toda a pagina, e bateria no
+   celular. O `dt` ja e limitado a 50ms, entao voltar depois de um tempo
+   fora nao faz a marca dar um salto.
+   O anel do cursor fica FORA da trava de proposito: ele acompanha o
+   ponteiro em qualquer ponto da pagina. */
+let heroNaTela = true;
+new IntersectionObserver(([e]) => { heroNaTela = e.isIntersecting; },
+  { rootMargin: '140px' }).observe(hero);
+
 function quadro(now) {
   requestAnimationFrame(quadro);
   const dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
   if (!reduz) {
     if (!pronto) medir();
-    desenharHero(dt);
+    if (heroNaTela) desenharHero(dt);
     ax += (cx - ax) * .16; ay += (cy - ay) * .16;
     const anel = $('.anel');
     if (anel) anel.style.transform = `translate3d(${ax}px,${ay}px,0)`;
