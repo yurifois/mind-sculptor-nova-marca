@@ -160,43 +160,167 @@
 @keyframes ledVolta{to{offset-distance:100%}}
 
 /* ---------------------------------------------------------------------------
-   3. O FEIXE QUE DESCE ATE O CARD DO MANIFESTO
+   3. O FEIXE CONSTANTE, EM FORMA DE VULCAO
 
-   Antes era um fio de 2px: lia como arame, nao como luz. O feixe do huly.io
-   tem volume — um nucleo fino e quase branco dentro de um cone largo e macio
-   que abre onde a luz pousa.
+   A primeira versao tinha um defeito de concepcao: o feixe descia uma vez,
+   entregava o bastao para a borda e SUMIA ate o ciclo recomecar. Luz que
+   pisca a cada 5 segundos nao e uma fonte de luz, e um evento -- e numa
+   secao que a pessoa passa olhando, quase sempre ela chega no silencio.
 
-   Sao duas camadas de fundo no MESMO elemento, entao a coreografia (o feixe
-   descendo e passando o bastao para a borda do card) continua exatamente
-   igual: um linear-gradient de 2px no centro e o nucleo; um radial-gradient
-   ancorado em 50% 100% e o cone, abrindo para baixo.
+   Agora o feixe EXISTE o tempo todo e o que se move e o que corre dentro
+   dele. Tres camadas no mesmo elemento:
 
-   O alinhamento: o elemento alargou mas o nucleo segue centrado em 50%, e o
-   left desconta metade da largura nova. O nucleo continua ocupando -1px a
-   +1px, em cima da borda esquerda do card, exatamente como antes.
+     o corpo  -- o cone parado, sempre aceso
+     ::before -- o fluxo descendo
+     ::after  -- o contrafluxo subindo, mais lento e mais fraco
+
+   O cone sai de um `conic-gradient` ancorado no APICE (`at 50% 0%`): uma
+   cunha de ~32 graus apontando para baixo (`from 164deg`, porque 180deg e
+   a vertical). Angulo fixo, largura crescendo com a distancia -- que e
+   exatamente a geometria de um vulcao, e de graca. Fazer a mesma silhueta
+   com clip-path daria aresta dura, porque `filter` roda antes de `clip` e
+   o blur nao chegaria a amaciar a borda do recorte.
+
+   Os dois fluxos tem periodos diferentes de proposito (150px contra 228px)
+   e velocidades diferentes: periodos iguais sincronizam, e o olho comeca a
+   enxergar o laco. Assim eles nunca repetem o mesmo encontro.
+
+   A secao tem overflow:hidden, entao o feixe pode ser generoso na altura:
+   ele e cortado no alto dela, que e de onde deve parecer vir.
    --------------------------------------------------------------------------- */
-.manifesto-media{--feixe-w:clamp(92px,13vw,170px)}
+.manifesto-media{--feixe-w:clamp(170px,27vw,340px)}
 
+/* A FORMA MORA NA MASCARA, NAO NO CONTEUDO. O cone e uma mascara no
+   proprio .mm-feixe -- e mascara corta o elemento E tudo que mora dentro
+   dele (a mesma regra que me obrigou a separar anel e brilho nos cards,
+   aqui trabalhando a favor). Assim os dois fluxos podem ser retangulos
+   banais: quem lhes da a silhueta de vulcao e o pai. */
 .mm-feixe{
+  position:absolute;z-index:6;pointer-events:none;overflow:hidden;
+  bottom:100%;
   width:var(--feixe-w);
   left:calc(-1px - (var(--feixe-w) - 2px) / 2);
-  height:min(52vh,420px);
-}
-
-.mm-feixe::before{
+  height:min(96vh,680px);
+  mix-blend-mode:screen;
   background:
-    linear-gradient(180deg,#0000 0%,rgba(255,236,200,.16) 38%,
-      rgba(255,230,180,.8) 84%,#FFF1D2 97%,#FFF9EC 100%) 50% 0/2px 100% no-repeat,
-    radial-gradient(58% 104% at 50% 100%,
-      rgba(215,146,11,.46) 0%,rgba(215,146,11,.17) 38%,
-      rgba(185,62,6,.07) 62%,#0000 78%);
-  filter:drop-shadow(0 0 10px rgba(215,146,11,.78));
+    /* o nucleo fino, em cima da borda do card */
+    linear-gradient(180deg,#0000 0%,rgba(255,238,205,.12) 28%,
+      rgba(255,232,186,.72) 84%,#FFF1D2 97%,#FFF9EC 100%) 50% 0/2px 100% no-repeat,
+    /* o corpo do cone, ganhando forca conforme desce */
+    linear-gradient(180deg,rgba(215,146,11,.05) 0%,rgba(215,146,11,.2) 70%,
+      rgba(255,226,170,.3) 100%);
+  /* cunha de ~32 graus ancorada no APICE (`at 50% 0%`), apontando para
+     baixo (`from 164deg`, porque 180deg e a vertical). Angulo fixo com a
+     largura crescendo com a distancia e, de graca, a geometria de um
+     vulcao. Com clip-path a aresta sairia dura: `filter` roda antes de
+     `clip`, entao nenhum blur chegaria a amacia-la.
+     Cruzado com um desbotar vertical, para o feixe dissolver no alto --
+     assim o comprimento exato nao importa, ele some antes de terminar. */
+  -webkit-mask-image:
+    conic-gradient(from 164deg at 50% 0%,#0000 0deg,#000 11deg,#000 21deg,#0000 32deg),
+    linear-gradient(180deg,#0000 0%,rgba(0,0,0,.22) 20%,#000 58%,#000 100%);
+  -webkit-mask-composite:source-in;
+          mask-image:
+    conic-gradient(from 164deg at 50% 0%,#0000 0deg,#000 11deg,#000 21deg,#0000 32deg),
+    linear-gradient(180deg,#0000 0%,rgba(0,0,0,.22) 20%,#000 58%,#000 100%);
+          mask-composite:intersect;
 }
 
-@media(max-width:900px){.manifesto-media{--feixe-w:clamp(64px,22vw,110px)}}
+/* OS FLUXOS ANDAM POR `transform`, NAO POR `background-position`.
+   Visualmente da no mesmo; em custo, nao: mexer em background-position
+   repinta a camada inteira a cada quadro, e esta camada tem mascara e
+   mistura por cima. Com transform o navegador rasteriza uma vez e so
+   desloca o resultado. Por isso cada fluxo e 3x mais alto que o feixe:
+   sobra folga em cima e embaixo para ele correr sem descobrir a borda. */
+.mm-feixe::before,.mm-feixe::after{
+  content:'';position:absolute;left:0;right:0;top:-100%;height:300%;
+  will-change:transform;
+  animation-iteration-count:infinite;
+  animation-timing-function:linear;
+  animation-play-state:paused;
+}
+
+/* o fluxo que desce */
+.mm-feixe::before{
+  background:linear-gradient(180deg,#0000 0%,rgba(255,240,210,.3) 34%,
+    rgba(255,247,228,.55) 44%,rgba(255,240,210,.22) 54%,#0000 78%);
+  background-size:100% 150px;
+  animation-name:fluirDesce;animation-duration:2.8s;
+}
+
+/* o contrafluxo que sobe: mais lento, mais fraco e com periodo diferente.
+   Periodos iguais sincronizam e o olho comeca a enxergar o laco; 150 e 228
+   nao fecham conta tao cedo. */
+.mm-feixe::after{
+  background:linear-gradient(180deg,#0000 0%,rgba(255,205,130,.17) 40%,
+    rgba(255,226,172,.29) 50%,rgba(255,205,130,.13) 60%,#0000 88%);
+  background-size:100% 228px;
+  animation-name:fluirSobe;animation-duration:4.4s;
+}
+
+.type-manifesto.cena-viva .mm-feixe::before,
+.type-manifesto.cena-viva .mm-feixe::after{animation-play-state:running}
+
+/* O cartao do manifesto ganha os mesmos dois LEDs dos outros cards -- e
+   aqui ficam ainda melhores, porque esta <figure> nao tem overflow
+   escondido: o brilho vaza para FORA, como no huly.io. Constantes, sem
+   sumir, dando a volta na extensao do cartao. */
+.type-manifesto.cena-viva .led::before,
+.type-manifesto.cena-viva .led::after{animation-play-state:running}
+
+/* cada laco anda exatamente um ladrilho: a emenda cai em cima de si mesma */
+@keyframes fluirDesce{from{transform:translateY(0)}to{transform:translateY(150px)}}
+@keyframes fluirSobe {from{transform:translateY(0)}to{transform:translateY(-228px)}}
+
+/* No celular o cartao entra no fluxo e o feixe atravessaria o paragrafo
+   acima dele. Encurta o alcance, mantem a forma. */
+/* ---------------------------------------------------------------------------
+   4. O PULSO DAS BOLINHAS DO METODO
+
+   Dois aneis saindo de cada no, meio ciclo um do outro, para a secao nao
+   ficar parada. Sao `::before` e `::after` do proprio no -- nenhum
+   elemento novo.
+
+   `transform:scale` + `opacity` sao as duas unicas propriedades que o
+   navegador anima sem repintar nada; por isso quatro cards pulsando o
+   tempo todo nao custam quadro. Um anel feito com `box-shadow` crescendo,
+   por exemplo, repintaria a cada quadro.
+
+   A fase e por card: quatro pulsos no mesmo compasso viram um piscador.
+   Ela entra pelos DOIS aneis, entao a meia volta entre eles continua. */
+.method-card{--fase:0s}
+.method-card:nth-child(2){--fase:.7s}
+.method-card:nth-child(3){--fase:1.4s}
+.method-card:nth-child(4){--fase:2.1s}
+
+.method-node::before,.method-node::after{
+  content:'';position:absolute;inset:0;z-index:-1;
+  border-radius:50%;border:2px solid var(--orange);
+  pointer-events:none;opacity:0;
+  animation:pulsoNo 2.8s cubic-bezier(.2,.6,.3,1) infinite;
+  animation-play-state:paused;
+}
+.method-node::before{animation-delay:var(--fase)}
+.method-node::after {animation-delay:calc(var(--fase) + 1.4s)}
+
+.method.cena-viva .method-node::before,
+.method.cena-viva .method-node::after{animation-play-state:running}
+
+@keyframes pulsoNo{
+  0%  {transform:scale(1);  opacity:0}
+  14% {                     opacity:.8}
+  100%{transform:scale(2.2);opacity:0}
+}
+
+@media(max-width:900px){
+  .manifesto-media{--feixe-w:clamp(120px,42vw,210px)}
+  .mm-feixe{height:min(42vh,300px)}
+}
 
 @media(prefers-reduced-motion:reduce){
   .ms-btn::before,.ms-btn::after{transition:none}
   .led::before,.led::after{animation:none;offset-distance:18%}
   .led::after{offset-distance:68%}
+  .mm-feixe::before,.mm-feixe::after{animation:none}
+  .method-node::before,.method-node::after{animation:none}
 }

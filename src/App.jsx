@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowDown, ArrowUpRight, Bot, Braces, Check, Globe2, MessageCircle, Palette, Search, Smartphone, Sparkles, Target, Zap } from 'lucide-react'
@@ -66,13 +66,22 @@ function SiteHeader(){
     const topo=cabecalho.current
     if(!topo)return undefined
     const itens=[...topo.querySelectorAll('[data-secao]')]
+    /* As secoes sao buscadas UMA vez. A versao anterior fazia um
+       querySelector por link DENTRO do ouvinte de rolagem: cinco buscas no
+       documento inteiro mais cinco getBoundingClientRect a cada evento, e
+       cada rect forca o navegador a recalcular layout. Num celular isso
+       sozinho explica um cabecalho que "nao acompanha o dedo". */
+    const secoes=navLinks.map(([href])=>[href,document.querySelector(href)])
+                         .filter(([,el])=>el)
+    let compacto=null
     const ler=()=>{
-      topo.classList.toggle('is-compact',scrollY>40)
+      /* eventos de rolagem chegam varias vezes por quadro; o trabalho e de
+         pintura, entao um por quadro basta e o resto e desperdicio */
+      const querCompacto=scrollY>40
+      if(querCompacto!==compacto){compacto=querCompacto;topo.classList.toggle('is-compact',querCompacto)}
       const meio=innerHeight*0.42
       let atual=''
-      for(const [href] of navLinks){
-        const el=document.querySelector(href)
-        if(!el)continue
+      for(const [href,el] of secoes){
         const r=el.getBoundingClientRect()
         if(r.top<=meio&&r.bottom>meio){atual=href;break}
       }
@@ -81,10 +90,16 @@ function SiteHeader(){
         else a.removeAttribute('aria-current')
       }
     }
+    let agendado=0
+    const aoRolar=()=>{
+      if(agendado)return
+      agendado=requestAnimationFrame(()=>{agendado=0;ler()})
+    }
     ler()
-    addEventListener('scroll',ler,{passive:true})
-    addEventListener('resize',ler)
-    return()=>{removeEventListener('scroll',ler);removeEventListener('resize',ler)}
+    addEventListener('scroll',aoRolar,{passive:true})
+    addEventListener('resize',aoRolar)
+    return()=>{cancelAnimationFrame(agendado)
+      removeEventListener('scroll',aoRolar);removeEventListener('resize',aoRolar)}
   },[])
 
   /* Painel aberto trava a rolagem do fundo e responde ao Esc. Sem isso o
@@ -273,12 +288,26 @@ function App(){
     let playFinal=()=>{}
     const fechados=[]
     let redeTimer=0
+
+    /* No celular a barra de endereco some e reaparece durante a rolagem, e
+       isso muda innerHeight. Por padrao o ScrollTrigger entende isso como
+       "a janela mudou de tamanho" e RECALCULA tudo no meio do movimento --
+       dai o solavanco e o pulo de posicao que parecem travamento. */
+    ScrollTrigger.config({ignoreMobileResize:true})
+
+    /* Um scrub de 1 segundo quer dizer "leve um segundo inteiro para
+       alcancar a rolagem". No desktop, com rolagem inercial, isso le como
+       suavidade. No celular o dedo esta ENCOSTADO no conteudo: um segundo
+       entre o dedo e a imagem e exatamente a sensacao de que a pagina nao
+       responde. No toque a perseguicao tem que ser curta. */
+    const perseguir=ScrollTrigger.isTouch===1?.3:.7
+
     const ctx=gsap.context(()=>{
       gsap.timeline({defaults:{ease:'power3.out'}}).to('.loader-center i',{scaleX:1,duration:.6}).to('.loader',{yPercent:-100,duration:.9,ease:'power4.inOut'},.72).from('.site-header',{y:-90,duration:.65},1.18)
       if(!reduced){
-        const hero=gsap.timeline({scrollTrigger:{trigger:'.hero-story',start:'top top',end:'bottom bottom',scrub:1}})
+        const hero=gsap.timeline({scrollTrigger:{trigger:'.hero-story',start:'top top',end:'bottom bottom',scrub:perseguir}})
         hero.to('.scene-1',{autoAlpha:0,scale:1.08,duration:1}).fromTo('.scene-2',{autoAlpha:0,scale:1.08},{autoAlpha:1,scale:1,duration:1},'<').to('.scene-2',{autoAlpha:0,scale:1.07,duration:1}).fromTo('.scene-3',{autoAlpha:0,scale:1.08},{autoAlpha:1,scale:1,duration:1},'<')
-        gsap.to('.hero-sticky .scene-bg',{xPercent:2.5,yPercent:-1.5,ease:'none',scrollTrigger:{trigger:'.hero-story',start:'top top',end:'bottom bottom',scrub:1}})
+        gsap.to('.hero-sticky .scene-bg',{xPercent:2.5,yPercent:-1.5,ease:'none',scrollTrigger:{trigger:'.hero-story',start:'top top',end:'bottom bottom',scrub:perseguir}})
         /* `opaco:false` e para quem JA tem opacidade propria — o cartao de
            servico vive em .37 e acende em 1 quando fica ativo. Se a entrada
            terminasse cravando opacity:1, ela apagaria esse mecanismo. O
@@ -306,18 +335,18 @@ function App(){
         revelar('.final-cta footer',{escada:.09,inicio:'top 95%'})
         gsap.utils.toArray('.service-entry').forEach((el,i)=>ScrollTrigger.create({trigger:el,start:'top 52%',end:'bottom 52%',onEnter:()=>setActiveService(i),onEnterBack:()=>setActiveService(i)}))
         gsap.utils.toArray('.contrast-step').forEach((el,i)=>ScrollTrigger.create({trigger:el,start:'top 55%',end:'bottom 55%',onEnter:()=>setContrastFrame(i),onEnterBack:()=>setContrastFrame(i)}))
-        const ai=gsap.timeline({scrollTrigger:{trigger:'.ai-story',start:'top top',end:'bottom bottom',scrub:1}})
+        const ai=gsap.timeline({scrollTrigger:{trigger:'.ai-story',start:'top top',end:'bottom bottom',scrub:perseguir}})
         ai.to('.ai-copy-1',{autoAlpha:0,y:-25,duration:.7}).fromTo('.ai-copy-2',{autoAlpha:0,y:35},{autoAlpha:1,y:0,duration:.7},'<.2').to('.ai-copy-2',{autoAlpha:0,y:-25,duration:.7}).fromTo('.ai-copy-3',{autoAlpha:0,y:35},{autoAlpha:1,y:0,duration:.7},'<.2').to('.ai-sticky>img',{scale:1.07,filter:'brightness(1.18)',duration:1},0)
-        gsap.fromTo('.method-route-fill',{scaleX:0},{scaleX:1,ease:'none',scrollTrigger:{trigger:'.method-system',start:'top 75%',end:'bottom 45%',scrub:1}})
+        gsap.fromTo('.method-route-fill',{scaleX:0},{scaleX:1,ease:'none',scrollTrigger:{trigger:'.method-system',start:'top 75%',end:'bottom 45%',scrub:perseguir}})
         gsap.utils.toArray('.method-card').forEach((el,i)=>gsap.from(el,{opacity:0,y:45,duration:.75,delay:i*.08,scrollTrigger:{trigger:el,start:'top 88%',once:true}}))
-        gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:1}})
+        gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:perseguir}})
         /* O feixe e o brilho da borda só rodam com a seção em cena. Animação
            em laço fora de quadro é bateria queimada sem ninguém olhando. */
         /* `cena-viva` e a chave geral das animacoes em laco: o CSS deixa
            tudo em animation-play-state:paused e so a secao em cena roda.
            Os LEDs dos cards repintam um gradiente conico a cada quadro e
            ainda passam por drop-shadow -- sao sete cards, nao e de graca. */
-        for(const alvo of ['.type-manifesto','.work','.vision'])
+        for(const alvo of ['.type-manifesto','.work','.vision','.method'])
           ScrollTrigger.create({trigger:alvo,start:'top bottom',end:'bottom top',
             onToggle:self=>document.querySelector(alvo)?.classList.toggle('cena-viva',self.isActive)})
         /* O FINAL EM DUAS COLUNAS, CADA UMA NO SEU TEMPO.
@@ -409,9 +438,19 @@ function App(){
     const travel=Math.max(0,section.offsetHeight-window.innerHeight),top=window.scrollY+section.getBoundingClientRect().top
     window.scrollTo({top:top+travel*((index*2)/(contrast.length*2-1)),behavior:'smooth'})
   }
-  return <div ref={root} className="site-shell"><Loader/><MouseGlow/><AmbientField/><div className="page-noise"/>
-    <SiteHeader/>
-    <main>
+  /* PORQUE ESTAS SECOES SAO MEMORIZADAS.
+     `activeService` e `contrastFrame` sao estado React escrito pelo SCROLL.
+     Sem isto, cada degrau de rolagem re-renderiza a arvore inteira -- oito
+     servicos, quatro trabalhos, tres visoes, o heroi, o metodo, o rodape --
+     so para trocar uma classe e um paragrafo. No desktop passa; no celular
+     e o que faz a pagina parecer que engasga a cada etapa.
+
+     `useMemo` com dependencia vazia devolve SEMPRE o mesmo elemento, e o
+     React entao pula a reconciliacao desse ramo inteiro. Nada aqui depende
+     de estado, entao a lista vazia e honesta: estas secoes sao as mesmas
+     do primeiro ao ultimo quadro. O que muda com o scroll sao as duas
+     secoes que ficaram DE FORA -- servicos e contraste. */
+  const cenaHeroi=useMemo(()=><>
       <section className="hero-story" id="topo"><div className="hero-sticky" data-cursor="EXPLORAR">
         <div className="hero-scene scene-1"><img className="scene-bg" src="/art/hero-architecture-v3.webp" alt="Arquitetura digital criada para a Mind Sculptor"/><SignalOverlay variant="hero"/><div className="scene-shade"/><div className="scene-copy"><p>UMA AGÊNCIA COMPLETA · BRASÍLIA</p><h1>MARKETING QUE<br/><em>NÃO PASSA</em><br/>DESPERCEBIDO.</h1></div></div>
         <div className="hero-scene scene-2"><img className="scene-bg" src="/art/web-portal-v3.webp" alt="Portal digital tridimensional criado para a Mind Sculptor"/><SignalOverlay variant="portal"/><div className="scene-shade"/><div className="scene-copy centered"><p>DESIGN · EXPERIÊNCIA · CONVERSÃO</p><h2>UMA MARCA INTEIRA.<br/><em>NÃO PEÇAS SOLTAS.</em></h2></div></div>
@@ -419,14 +458,32 @@ function App(){
         <HeroDustMorph/>
         <div className="hero-rail"><span>MS / IMMERSIVE SYSTEM</span><span>01 — 03</span><span>BRASÍLIA · 2026</span></div><div className="hero-nav"><a href="#visao">VISÃO</a><i>/</i><a href="#servicos">SERVIÇOS</a><i>/</i><a href="#inteligencia">IA</a></div><a className="hero-scroll" href="#visao"><span>ROLE PARA EXPLORAR</span><ArrowDown size={15}/></a>
       </div></section>
+  </>,[])
+
+  const cenaVisao=useMemo(()=>
       <section className="vision vision-v4" id="visao"><div className="vision-copy" data-reveal><p className="section-label">01 / NOSSA VISÃO</p><h2>NÃO CRIAMOS<br/>PEÇAS SOLTAS.<br/><em>CRIAMOS CAMINHOS.</em></h2><p>Design, conteúdo, tecnologia e mídia trabalhando como um único ambiente — da primeira impressão até a próxima ação.</p></div><div className="vision-gallery">{visionCards.map(([src,meta,title],i)=><figure className={'vision-card vision-card-'+(i+1)} key={src} data-reveal><img src={src} alt={title}/><i className="led" aria-hidden="true"/><div className="vision-card-shade"/><figcaption><Zap size={15}/><span>{meta}</span><b>{title}</b></figcaption>{i===0&&<SignalOverlay variant="vision"/>}</figure>)}</div></section>
-      <section className="service-system services-v4" id="servicos"><div className="service-intro" data-reveal><p className="section-label">02 / O ECOSSISTEMA</p><h2>OITO FRENTES.<br/><em>UMA ÚNICA DIREÇÃO.</em></h2><p>Agora cada capacidade é mostrada em uso: o cliente vê o que acontece, como se conecta e qual movimento vem depois.</p></div><div className="service-layout"><div className="service-list">{services.map((service,index)=>{const Icon=service.icon;return <article className={'service-entry '+(index===activeService?'active':'')} key={service.n}><div className="service-entry-head"><span>{service.n}</span><small>{service.kicker}</small><Icon size={18}/></div><h3>{service.title}</h3><p>{service.copy}</p><div>{service.tags.map(tag=><span key={tag}>{tag}</span>)}</div><a className="ms-btn ms-btn-inline" href={whatsapp} target="_blank" rel="noreferrer"><span>CONVERSAR SOBRE ISSO</span><ArrowUpRight size={16}/></a><div className="mobile-service-art"><ServiceVisual service={service}/></div></article>})}</div><aside className="service-stage v4-stage" aria-live="polite"><div className="stage-visual" key={activeService}><ServiceVisual service={current}/></div><div className="stage-caption"><span>{current.n} / 08 · {current.kicker}</span><b>{current.title}</b><p>{current.copy}</p></div></aside></div></section>
+  ,[])
+
+  const cenaTrabalhos=useMemo(()=>
       <section className="work" id="trabalhos"><div className="work-head" data-reveal><p className="section-label">03 / CENAS ORIGINAIS</p><h2>A IMAGEM NÃO<br/><em>DECORA A IDEIA.</em><br/>ELA É A IDEIA.</h2></div><div className="work-grid">{scenes.map(([src,label],i)=><figure className={'work-card work-'+(i+1)} key={src} data-reveal data-tilt data-cursor="VER"><img src={src} alt={label}/><i className="led" aria-hidden="true"/><figcaption><span>0{i+1}</span><b>{label}</b><ArrowUpRight size={17}/></figcaption></figure>)}</div></section>
-      <section ref={contrastSection} className={'contrast contrast-v4 '+(contrastSolved?'is-solved':'is-problem')} id="direcao"><div className="contrast-stage"><div className="contrast-bg" key={currentContrast.image}><img className="contrast-bg-gray" src={currentContrast.image} alt=""/><img className="contrast-bg-color" src={currentContrast.image} alt=""/><div className="contrast-vignette"/></div><p className="contrast-title">04 / A DIFERENÇA NA PRÁTICA</p><div className="contrast-count"><span>0{activeContrast+1}</span><i>/</i><b>04</b><small>{contrastSolved?'COM A MIND':'SEM DIREÇÃO'}</small></div><div className="contrast-left"><small>SEM DIREÇÃO</small><h3>{currentContrast.bad}</h3></div><div className="contrast-logo" aria-hidden="true"><div className="logo-halo"/><div className="logo-rotor"><img className="logo-face logo-gray" src="/art/logo-head-gray-3d-v4.webp" alt=""/><img className="logo-face logo-color" src="/art/logo-head-color-3d-v4.webp" alt=""/></div><div className="contrast-line"/></div><div className="contrast-right"><small>COM A MIND</small><h3>{currentContrast.good}</h3><p>{currentContrast.copy}</p></div><ol className="contrast-index" aria-label="Etapas da comparação">{contrast.map((item,i)=><li key={item.bad}><button type="button" aria-current={i===activeContrast?'true':'false'} onClick={()=>goContrast(i)}><i>0{i+1}</i><span>{item.bad}</span></button></li>)}</ol><div className="contrast-instruction"><span>{contrastSolved?'RESULTADO ILUMINADO':'PROBLEMA IDENTIFICADO'}</span><i/><b>CONTINUE ROLANDO</b></div></div><div className="contrast-scroll">{contrast.flatMap((item,i)=>[<div className="contrast-step" key={`${item.bad}-problema`}><span>0{i+1}A</span></div>,<div className="contrast-step" key={`${item.bad}-solucao`}><span>0{i+1}B</span></div>])}</div></section>
+  ,[])
+
+  const cenaFecho=useMemo(()=><>
       <AIStory/>
       <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
-      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><i className="mm-feixe" aria-hidden="true"/><i className="mm-borda mm-borda-topo" aria-hidden="true"/><i className="mm-borda mm-borda-esq" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
+      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><i className="mm-feixe" aria-hidden="true"/><i className="led" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
       <section className="final-cta final-v4" id="contato"><div className="final-mark">MIND</div><div className="final-content"><div className="final-copy"><p className="section-label" data-final-reveal>07 / DIAGNÓSTICO GRATUITO</p><h2 data-final-reveal>VAMOS OLHAR<br/>O SEU NEGÓCIO<br/><em>DE PERTO.</em></h2><p data-final-reveal>Preencha os campos. A conversa segue direto no WhatsApp com quem entende do assunto — sem robô e sem funil de vendedor.</p><ul className="diagnostic-list" data-final-reveal><li><Check size={16}/>Análise do seu perfil, site e presença digital atual</li><li><Check size={16}/>Os três gargalos que mais travam sua venda hoje</li><li><Check size={16}/>Proposta com escopo e valor fechados, se fizer sentido</li><li><Check size={16}/>Zero compromisso: se não for a hora, a gente fala isso</li></ul><a className="ms-btn ms-btn-dark" href={whatsapp} target="_blank" rel="noreferrer" data-final-reveal><span>PREFIRO CHAMAR DIRETO</span><ArrowUpRight size={18}/></a><p className="direct-contact" data-final-reveal>(61) 99329-1126 · BRASÍLIA/DF · TODO O BRASIL</p></div><ContactForm/></div><footer><Brand/><span>BRASÍLIA/DF · TODO O BRASIL</span><span>© 2026 MIND SCULPTOR</span></footer></section>
+  </>,[])
+
+  return <div ref={root} className="site-shell"><Loader/><MouseGlow/><AmbientField/><div className="page-noise"/>
+    <SiteHeader/>
+    <main>
+      {cenaHeroi}
+      {cenaVisao}
+      <section className="service-system services-v4" id="servicos"><div className="service-intro" data-reveal><p className="section-label">02 / O ECOSSISTEMA</p><h2>OITO FRENTES.<br/><em>UMA ÚNICA DIREÇÃO.</em></h2><p>Agora cada capacidade é mostrada em uso: o cliente vê o que acontece, como se conecta e qual movimento vem depois.</p></div><div className="service-layout"><div className="service-list">{services.map((service,index)=>{const Icon=service.icon;return <article className={'service-entry '+(index===activeService?'active':'')} key={service.n}><div className="service-entry-head"><span>{service.n}</span><small>{service.kicker}</small><Icon size={18}/></div><h3>{service.title}</h3><p>{service.copy}</p><div>{service.tags.map(tag=><span key={tag}>{tag}</span>)}</div><a className="ms-btn ms-btn-inline" href={whatsapp} target="_blank" rel="noreferrer"><span>CONVERSAR SOBRE ISSO</span><ArrowUpRight size={16}/></a><div className="mobile-service-art"><ServiceVisual service={service}/></div></article>})}</div><aside className="service-stage v4-stage" aria-live="polite"><div className="stage-visual" key={activeService}><ServiceVisual service={current}/></div><div className="stage-caption"><span>{current.n} / 08 · {current.kicker}</span><b>{current.title}</b><p>{current.copy}</p></div></aside></div></section>
+      {cenaTrabalhos}
+      <section ref={contrastSection} className={'contrast contrast-v4 '+(contrastSolved?'is-solved':'is-problem')} id="direcao"><div className="contrast-stage"><div className="contrast-bg" key={currentContrast.image}><img className="contrast-bg-gray" src={currentContrast.image} alt=""/><img className="contrast-bg-color" src={currentContrast.image} alt=""/><div className="contrast-vignette"/></div><p className="contrast-title">04 / A DIFERENÇA NA PRÁTICA</p><div className="contrast-count"><span>0{activeContrast+1}</span><i>/</i><b>04</b><small>{contrastSolved?'COM A MIND':'SEM DIREÇÃO'}</small></div><div className="contrast-left"><small>SEM DIREÇÃO</small><h3>{currentContrast.bad}</h3></div><div className="contrast-logo" aria-hidden="true"><div className="logo-halo"/><div className="logo-rotor"><img className="logo-face logo-gray" src="/art/logo-head-gray-3d-v4.webp" alt=""/><img className="logo-face logo-color" src="/art/logo-head-color-3d-v4.webp" alt=""/></div><div className="contrast-line"/></div><div className="contrast-right"><small>COM A MIND</small><h3>{currentContrast.good}</h3><p>{currentContrast.copy}</p></div><ol className="contrast-index" aria-label="Etapas da comparação">{contrast.map((item,i)=><li key={item.bad}><button type="button" aria-current={i===activeContrast?'true':'false'} onClick={()=>goContrast(i)}><i>0{i+1}</i><span>{item.bad}</span></button></li>)}</ol><div className="contrast-instruction"><span>{contrastSolved?'RESULTADO ILUMINADO':'PROBLEMA IDENTIFICADO'}</span><i/><b>CONTINUE ROLANDO</b></div></div><div className="contrast-scroll">{contrast.flatMap((item,i)=>[<div className="contrast-step" key={`${item.bad}-problema`}><span>0{i+1}A</span></div>,<div className="contrast-step" key={`${item.bad}-solucao`}><span>0{i+1}B</span></div>])}</div></section>
+      {cenaFecho}
     </main>
     <a className="floating-whatsapp ms-btn" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Falar com a Mind Sculptor no WhatsApp"><MessageCircle size={18}/><span>WHATSAPP</span><ArrowUpRight size={15}/></a>
   </div>

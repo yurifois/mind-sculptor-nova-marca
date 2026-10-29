@@ -72,82 +72,6 @@
 }
 
 /* -------------------------------------------------------------------------
-   3. O FEIXE E O BRILHO QUE PERCORRE A BORDA DO CARTÃO
-      (seção "VALOR NÃO É EXPLICADO. É PERCEBIDO.")
-
-   A coreografia pedida, em um único relógio de 5,2s:
-
-     0,0s ─ 0,8s   o feixe desce do alto da seção até o canto do cartão
-     0,8s ─ 2,4s   o brilho corre a borda de CIMA, da esquerda para a direita
-     2,4s ─ 2,7s   chegando no fim ele desacelera, apaga e passa o bastão
-     2,5s ─ 4,4s   o novo brilho desce a borda ESQUERDA até quase o fim
-     4,4s ─ 5,2s   silêncio, e recomeça
-
-   Os três compartilham a MESMA duração e se separam por porcentagem dentro
-   do quadro-chave. É isso que impede a deriva: três animações com durações
-   diferentes se desencontram depois de alguns minutos, e o bastão passa a
-   ser entregue no vazio.
-
-   Tudo mora dentro da <figure>, então acompanha a rotação de -3° do cartão.
-   A seção tem overflow:hidden, então o feixe é cortado no alto dela — que
-   é de onde ele deve parecer vir.
-   ------------------------------------------------------------------------- */
-.manifesto-media{--ciclo:5.2s}
-.mm-feixe,.mm-borda{position:absolute;z-index:6;pointer-events:none;overflow:hidden}
-.mm-feixe::before,.mm-borda::before{content:'';position:absolute;inset:0;
-  filter:drop-shadow(0 0 8px rgba(215,146,11,.95));
-  animation-duration:var(--ciclo);animation-iteration-count:infinite;
-  animation-timing-function:linear;animation-play-state:paused}
-
-/* O feixe: preso ao canto superior esquerdo, subindo para fora do cartão. */
-.mm-feixe{left:-1px;bottom:100%;width:2px;height:min(44vh,360px)}
-.mm-feixe::before{animation-name:mmFeixe;
-  background:linear-gradient(180deg,transparent 0%,rgba(215,146,11,.14) 34%,
-                             rgba(215,146,11,.75) 82%,#FFE3AE 97%,#FFF6E4 100%)}
-
-.mm-borda-topo{left:-1px;right:-1px;top:-1px;height:2px}
-.mm-borda-topo::before{animation-name:mmTopo;
-  background:linear-gradient(90deg,transparent 36%,rgba(215,146,11,.5) 45%,
-    #FFE3AE 49%,#FFF6E4 50%,#FFE3AE 51%,rgba(215,146,11,.5) 55%,transparent 64%)}
-
-.mm-borda-esq{left:-1px;top:-1px;bottom:-1px;width:2px}
-.mm-borda-esq::before{animation-name:mmEsq;
-  background:linear-gradient(180deg,transparent 36%,rgba(215,146,11,.5) 45%,
-    #FFE3AE 49%,#FFF6E4 50%,#FFE3AE 51%,rgba(215,146,11,.5) 55%,transparent 64%)}
-
-/* Só roda com a seção em cena. Aqui o IntersectionObserver é a ferramenta
-   CERTA: ele liga e desliga um estado, não decide a cada quadro se algo
-   desenha — se a entrega atrasar meio segundo ninguém percebe numa
-   animação decorativa em laço. É o oposto do caso da cena 3D. */
-.type-manifesto.cena-viva .mm-feixe::before,
-.type-manifesto.cena-viva .mm-borda::before{animation-play-state:running}
-
-@keyframes mmFeixe{
-  0%   {transform:translateY(-100%);opacity:0}
-  3%   {opacity:1}
-  15%  {transform:translateY(0);opacity:1}
-  21%  {transform:translateY(0);opacity:.18}
-  26%,100%{transform:translateY(0);opacity:0}
-}
-@keyframes mmTopo{
-  0%,14%{transform:translateX(-50%);opacity:0}
-  17%   {opacity:1}
-  /* desacelera na chegada: o brilho ENCOSTA na quina em vez de bater nela */
-  41%   {transform:translateX(34%);opacity:1;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
-  47%   {transform:translateX(44%);opacity:.7}
-  52%   {transform:translateX(47%);opacity:0}
-  100%  {transform:translateX(47%);opacity:0}
-}
-@keyframes mmEsq{
-  0%,47%{transform:translateY(-50%);opacity:0}
-  50%   {opacity:1}
-  74%   {transform:translateY(30%);opacity:1;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
-  80%   {transform:translateY(39%);opacity:.7}
-  85%   {transform:translateY(42%);opacity:0}
-  100%  {transform:translateY(42%);opacity:0}
-}
-
-/* -------------------------------------------------------------------------
    4. TIPOGRAFIA — os casos que mereciam mais que a escala geral
    ------------------------------------------------------------------------- */
 /* O telefone é a informação mais importante da página. Estava em 6px; a
@@ -165,6 +89,18 @@
    — ficava só apertado, que é pior, porque ninguém percebe e mesmo assim
    parece amador. Abaixo de 1000px o painel resolve com folga. */
 @media(max-width:1000px){
+  /* O CABECALHO PESADO NO CELULAR.
+     `backdrop-filter` num elemento FIXO manda o navegador reamostrar e
+     desfocar tudo que passa ATRAS dele a cada quadro de rolagem -- a
+     pagina inteira rola, o desfoque e recalculado inteiro, sempre. Num
+     telefone e o item mais caro da pagina, e e exatamente o que faz o
+     cabecalho parecer que nao acompanha o dedo. Sobre fundo escuro um
+     gradiente um pouco mais opaco entrega a mesma leitura de graca. */
+  .site-header{-webkit-backdrop-filter:none;backdrop-filter:none;
+    background:linear-gradient(180deg,rgba(12,8,7,.97),rgba(12,8,7,.84))}
+  .site-header.is-compact{
+    background:linear-gradient(180deg,rgba(12,8,7,.98),rgba(12,8,7,.91))}
+
   .site-header{grid-template-columns:1fr auto;gap:10px}
   .site-header.is-compact{height:58px}
   .site-header nav{display:none}
@@ -207,13 +143,30 @@
 
 }
 
-/* No celular o cartão do manifesto entra no fluxo, e um feixe de 44vh
-   atravessaria o parágrafo acima dele. Encurta. */
-@media(max-width:900px){
-  .mm-feixe{height:min(20vh,150px)}
-}
-
 @media(prefers-reduced-motion:reduce){
-  .mm-feixe,.mm-borda{display:none}
   .mobile-menu,.mobile-menu nav a,.mobile-menu-cta{transition-duration:.01ms!important}
 }
+
+/* -------------------------------------------------------------------------
+   O PONTEIRO DIZ O QUE O ELEMENTO FAZ
+
+   O v4 tinha `html,body,a,button,input,select,textarea{cursor:auto!important}`.
+   A intenção era devolver o ponteiro nativo, mas `auto` num link NÃO vira
+   mão: `auto` quer dizer "decida pelo contexto", e em cima de texto o
+   contexto é texto -- sai o I-beam de selecionar. Resultado: o menu inteiro
+   e os botões pareciam parágrafo, nunca pareciam clicáveis.
+
+   `auto` só serve onde o navegador tem mesmo o que decidir. Onde a resposta
+   é conhecida, diga a resposta.
+   ------------------------------------------------------------------------- */
+a[href],button,summary,select,[role="button"],
+.menu-toggle,.ms-btn,.form-consent,
+[data-cursor],.puzzle-tab,.contrast-index button{cursor:pointer!important}
+
+.contact-form input:not([type="checkbox"]):not([type="radio"]),
+.contact-form textarea{cursor:text!important}
+
+/* o rótulo embrulha o campo: mão em cima do bloco todo confunde, menos
+   no consentimento, que é caixa de marcar e aí a mão está certa */
+.contact-form label{cursor:default}
+.contact-form .form-consent,.contact-form .form-consent *{cursor:pointer!important}
