@@ -726,7 +726,45 @@ html.js .tw.in .w{opacity:1;filter:none;transform:none}
   .pcb__serigrafia{display:none}
 }
 
-.ia{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(32px,5vw,72px);align-items:start}
+/* ---------------------------------------------------------------------
+   A SECAO DE IA VIROU PALCO.
+   A referencia resolve o fundo com um MP4 de 2560x1440 renderizado num
+   programa 3D. Aqui a placa e WebGL ao vivo: pesa menos que o video,
+   responde ao ponteiro e esta na paleta da marca — coisas que um arquivo
+   de video nao faz. Se o WebGL nao subir, a placa em SVG fica no lugar.
+
+   O VEU (`#ia::before`) nao e enfeite: texto claro sobre render tem
+   contraste imprevisivel porque o render muda a cada quadro. O veu
+   garante o piso de contraste do lado onde o texto mora, e deixa o outro
+   lado limpo para a placa aparecer.
+   --------------------------------------------------------------------- */
+#ia{position:relative;isolation:isolate;overflow:hidden;
+  min-height:min(106svh,920px);display:flex;flex-direction:column;justify-content:center;
+  padding-block:var(--sec-y)}
+#placa3d{position:absolute;inset:0;width:100%;height:100%;display:block;
+  z-index:0;pointer-events:none}
+#ia::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(98deg,var(--fundo) 4%,rgba(26,19,16,.80) 34%,
+                             rgba(26,19,16,.18) 62%,transparent 78%)}
+#ia > .shell{position:relative;z-index:2}
+
+.pcb--reserva{position:absolute;inset:0;margin:0;height:auto;z-index:0;
+  border:0;background:transparent}
+#ia.tem-3d .pcb--reserva{display:none}
+
+.ia-texto{max-width:min(52%,620px)}
+#ia .ab{max-width:min(52%,620px);margin-top:clamp(26px,4vh,46px)}
+
+@media (max-width:980px){
+  /* no celular a placa nao divide a largura com o texto: ela fica atras,
+     e o veu vira vertical para o texto nao brigar com o render */
+  #ia{min-height:0}
+  /* o véu é forte onde o texto mora e fraco onde a placa aparece:
+     antes ele era forte embaixo também e apagava a cena inteira */
+  #ia::before{background:linear-gradient(180deg,var(--fundo) 0%,rgba(26,19,16,.93) 26%,
+                                         rgba(26,19,16,.78) 52%,rgba(26,19,16,.30) 100%)}
+  .ia-texto,#ia .ab{max-width:none}
+}
 .checks{list-style:none;margin:1.8rem 0 0;padding:0;display:grid;gap:.85rem}
 .checks li{display:grid;grid-template-columns:auto 1fr;gap:.8rem;align-items:start;
   color:var(--fg-2);font-size:1rem;line-height:1.46}
@@ -1290,10 +1328,13 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
 </section>
 
 <!-- ======================= IA ======================= -->
-<section id="ia" data-tema="escuro" style="padding-block:var(--sec-y)">
-  <!-- A PLACA: a corrente sai das bordas e chega no chip. Ver a nota no CSS
-       sobre pathLength e sobre por que isto nao e canvas. -->
-  <figure class="pcb rv" role="img"
+<section id="ia" data-tema="escuro">
+  <!-- A placa em 3D de verdade: WebGL, em `cena 3D` no fim do arquivo. -->
+  <canvas id="placa3d" aria-hidden="true"></canvas>
+
+  <!-- RESERVA: a mesma placa em SVG, para quem nao tem WebGL. Ela some
+       sozinha quando a cena 3D sobe (`#ia.tem-3d`). -->
+  <figure class="pcb pcb--reserva" role="img"
           aria-label="Placa de circuito com a corrente percorrendo as trilhas ate um chip marcado I A.">
     <svg viewBox="0 0 1200 380" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
@@ -1396,8 +1437,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
   </figure>
 
   <div class="shell">
-    <div class="ia">
-      <div>
+    <div class="ia-texto">
         <p class="olho rv">Diferencial Mind Sculptor</p>
         <h2 class="rv tw" style="--i:1">A gente não guarda<br><span class="ancora">o segredo da IA.</span></h2>
         <p class="linha-fina rv" style="--i:2">A maioria das agências usa inteligência
@@ -1413,9 +1453,10 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
           <li><span><b>Autonomia de verdade</b> — se um dia você quiser levar tudo para dentro
             de casa, vai conseguir.</span></li>
         </ul>
-      </div>
+    </div>
 
-      <div class="ab rv" id="ab" style="--i:2">
+    <!-- o quadro entra DEPOIS da cena, como ele pediu -->
+    <div class="ab rv" id="ab" style="--i:2">
         <h4>Antes × depois do treinamento</h4>
         <div class="ab__linha" style="--i:0">
           <div class="ab__t"><span>Roteiro de reels</span><b>40min → 6min</b></div>
@@ -1429,8 +1470,7 @@ body.passou-hero .zap{opacity:1;pointer-events:auto;transform:none}
         <div class="ab__linha" style="--i:3">
           <div class="ab__t"><span>Resposta a lead</span><b>2h → 5min</b></div>
           <div class="ab__barra" style="--v:.07"><i></i></div></div>
-        <code>rodando_no_seu_time</code>
-      </div>
+      <code>rodando_no_seu_time</code>
     </div>
   </div>
 </section>
@@ -2562,17 +2602,21 @@ let ultimo = performance.now();
    celular. O `dt` ja e limitado a 50ms, entao voltar depois de um tempo
    fora nao faz a marca dar um salto.
    O anel do cursor fica FORA da trava de proposito: ele acompanha o
-   ponteiro em qualquer ponto da pagina. */
-let heroNaTela = true;
-new IntersectionObserver(([e]) => { heroNaTela = e.isIntersecting; },
-  { rootMargin: '140px' }).observe(hero);
+   ponteiro em qualquer ponto da pagina.
+   Aqui tambem a leitura e SINCRONA, pelo mesmo motivo da cena 3D: o
+   IntersectionObserver responde quando o navegador quer, e estado que
+   decide se algo desenha nao pode chegar atrasado. */
+const heroNaTela = () => {
+  const r = hero.getBoundingClientRect();
+  return r.bottom > -140 && r.top < innerHeight + 140;
+};
 
 function quadro(now) {
   requestAnimationFrame(quadro);
   const dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
   if (!reduz) {
     if (!pronto) medir();
-    if (heroNaTela) desenharHero(dt);
+    if (heroNaTela()) desenharHero(dt);
     ax += (cx - ax) * .16; ay += (cy - ay) * .16;
     const anel = $('.anel');
     if (anel) anel.style.transform = `translate3d(${ax}px,${ay}px,0)`;
@@ -2600,6 +2644,498 @@ if (!reduz) {
    o escopo de fora (Annex B) e apaga a de fora em silêncio. O canvas do herói
    ficou em 300x150, a esfera sumiu, e o console não disse nada. Por isso a do
    trilho se chama medirTrilho. */
+</script>
+<script type="module">
+/* ==========================================================================
+   A PLACA EM 3D DE VERDADE — a cena de fundo da seção de IA.
+
+   O site de referência resolve isso com um MP4 de 2560x1440 e 9s em loop:
+   foi renderizado num programa 3D e exportado. Aqui é WebGL ao vivo, e a
+   troca é consciente — ver a nota no README. O que importa para o olho é
+   o que faz um render parecer FOTOGRAFADO, e é isso que está montado:
+
+   1. lente longa (fov 26 ≈ 85mm). Grande-angular denuncia CG na hora;
+   2. uma luz-chave quente só, alta e à esquerda, como no manual. O resto
+      é preenchimento fraco e um contraluz âmbar que desenha a borda;
+   3. metal de verdade: metalness alto com rugosidade baixa precisa de
+      ALGO para refletir, senão fica preto. Por isso existe o ambiente
+      gerado — sem ele os pinos de latão somem;
+   4. chanfro em tudo. Aresta perfeitamente viva não existe no mundo e o
+      olho sabe: é o brilho fino na quina que vende o objeto;
+   5. profundidade: o fundo cai para o preto e a placa flutua acima de uma
+      sombra suave — objeto sem chão parece adesivo.
+
+   A corrente que chega ao chip é geometria que anda, não textura animada:
+   repintar uma textura de 1024px a cada quadro custa mais que mover oito
+   caixinhas.
+   ========================================================================== */
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const tela = document.getElementById('placa3d');
+const secao = document.getElementById('ia');
+if (tela && secao) iniciar();
+
+function iniciar() {
+  const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let rend;
+  try {
+    rend = new THREE.WebGLRenderer({ canvas: tela, antialias: true, alpha: true,
+                                     powerPreference: 'high-performance' });
+  } catch (e) { return; }                    /* sem WebGL: fica a placa em SVG */
+  if (!rend.capabilities.isWebGL2 && !rend.getContext()) return;
+
+  secao.classList.add('tem-3d');
+  rend.setPixelRatio(Math.min(devicePixelRatio, 2));
+  rend.outputColorSpace = THREE.SRGBColorSpace;
+  rend.toneMapping = THREE.ACESFilmicToneMapping;   /* o que impede o âmbar de estourar em branco */
+  rend.toneMappingExposure = .96;
+
+  const cena = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 220);
+  cam.position.set(2, 18.5, 28);
+  cam.lookAt(-3.4, 0, 0);
+
+  /* --- COR --------------------------------------------------------------
+     Os mesmos tokens do manual, em linear. #D7920B é o âmbar, #B98A3E o
+     latão, #F1D08A o latão-luz. A placa é marrom quase preto, não verde:
+     verde é cor de PCB genérica e levaria a cena para fora da marca. */
+  const C = {
+    placa:  new THREE.Color('#1B1310'),
+    trilha: new THREE.Color('#8A6630'),
+    latao:  new THREE.Color('#B98A3E'),
+    luz:    new THREE.Color('#F1D08A'),
+    ambar:  new THREE.Color('#D7920B'),
+    chip:   new THREE.Color('#241A14'),
+  };
+
+  /* --- AMBIENTE ---------------------------------------------------------
+     Metal reflete o que está em volta. Sem nada em volta, metalness:1 fica
+     PRETO — é o erro clássico. Em vez de carregar um HDRI (mais um arquivo
+     na rede), o ambiente é pintado num canvas: um degradê quente em cima,
+     escuro embaixo. Basta para o latão ter o que refletir. */
+  function ambiente() {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const g = c.getContext('2d');
+    const d = g.createLinearGradient(0, 0, 0, 64);
+    d.addColorStop(0,   '#2B2018');
+    d.addColorStop(.42, '#15100C');
+    d.addColorStop(1,   '#060504');
+    g.fillStyle = d; g.fillRect(0, 0, 64, 64);
+    /* a "janela" de luz: é o que o metal reflete. Sem ela o latão fica
+       preto, com ela forte demais a cena vira dourado de bijuteria. */
+    g.fillStyle = 'rgba(255,224,176,.62)';
+    g.beginPath(); g.ellipse(20, 10, 13, 6, 0, 0, 7); g.fill();
+    const t = new THREE.CanvasTexture(c);
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  cena.environment = ambiente();
+
+  /* --- LUZ: uma chave quente, um preenchimento fraco, um contraluz ------- */
+  const chave = new THREE.DirectionalLight(0xFFD9A0, 2.25);
+  chave.position.set(-9, 13, 7);
+  cena.add(chave);
+  cena.add(new THREE.HemisphereLight(0x2A1E14, 0x050403, .34));
+  /* o contraluz âmbar desenha a borda dos componentes contra o preto.
+     É ele que impede a placa de virar uma mancha escura. */
+  const contra = new THREE.PointLight(0xD7920B, 34, 34, 2);
+  contra.position.set(7, 2.6, -6.5);
+  cena.add(contra);
+
+  const grupo = new THREE.Group();
+  grupo.rotation.set(-.055, -.42, .035);
+  cena.add(grupo);
+
+  /* --- A TEXTURA DA PLACA ----------------------------------------------
+     As trilhas são desenhadas, não modeladas: relevo de 35µm não aparece
+     nesta distância, mas o desenho sim. Cotovelo a 45° porque ângulo reto
+     reflete sinal — placa de verdade não tem. */
+  const LADO = 2048, MEIO = LADO / 2;
+  function texturaPlaca() {
+    const c = document.createElement('canvas'); c.width = c.height = LADO;
+    const g = c.getContext('2d');
+    g.fillStyle = '#17110E'; g.fillRect(0, 0, LADO, LADO);
+
+    g.strokeStyle = 'rgba(185,138,62,.07)'; g.lineWidth = 2;
+    for (let i = 0; i <= LADO; i += 64) {
+      g.beginPath(); g.moveTo(i, 0); g.lineTo(i, LADO); g.stroke();
+      g.beginPath(); g.moveTo(0, i); g.lineTo(LADO, i); g.stroke();
+    }
+
+    const R = 360;                                  /* raio do chip central */
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    let semente = 7;
+    const rnd = () => (semente = (semente * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+
+    for (let i = 0; i < 64; i++) {
+      const lado = i % 4, t = (rnd() - .5) * 1.7;
+      let x0, y0, x1, y1;
+      if (lado === 0) { x0 = 0;    y0 = MEIO + t * MEIO; x1 = MEIO - R; y1 = MEIO + t * R * .8; }
+      if (lado === 1) { x0 = LADO; y0 = MEIO + t * MEIO; x1 = MEIO + R; y1 = MEIO + t * R * .8; }
+      if (lado === 2) { x0 = MEIO + t * MEIO; y0 = 0;    x1 = MEIO + t * R * .8; y1 = MEIO - R; }
+      if (lado === 3) { x0 = MEIO + t * MEIO; y0 = LADO; x1 = MEIO + t * R * .8; y1 = MEIO + R; }
+
+      const dx = x1 - x0, dy = y1 - y0;
+      const s = Math.min(Math.abs(dx), Math.abs(dy)) * (.45 + rnd() * .4);
+      const mx = x0 + Math.sign(dx) * (Math.abs(dx) - s);
+      const my = y0 + Math.sign(dy) * s;
+
+      g.strokeStyle = rnd() > .68 ? '#7E5B2A' : '#4E391C';
+      g.lineWidth = 4 + rnd() * 4;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(mx, y0); g.lineTo(x1, y1); g.stroke();
+
+      g.fillStyle = '#8A6630';
+      g.beginPath(); g.arc(mx, y0, g.lineWidth * .9, 0, 7); g.fill();
+    }
+
+    g.fillStyle = 'rgba(185,138,62,.34)';
+    g.font = '600 30px Barlow Condensed, Arial Narrow, sans-serif';
+    g.fillText('MIND SCULPTOR', 64, 74);
+    g.fillText('MS–AI / REV 04', 64, LADO - 52);
+    g.textAlign = 'right';
+    g.fillText('NUCLEO ABERTO', LADO - 64, 74);
+    g.fillText('SEM SEGREDO', LADO - 64, LADO - 52);
+
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = rend.capabilities.getMaxAnisotropy();
+    return t;
+  }
+
+  /* --- O CHANFRO --------------------------------------------------------
+     Caixa com as quinas cortadas. Três segmentos de curva bastam: o que o
+     olho lê é a FITA DE LUZ fina na quina, não a curvatura. */
+  function caixa(l, a, p, r = .035) {
+    const g = new THREE.BoxGeometry(l, a, p, 1, 1, 1);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      pos.setX(i, pos.getX(i) - Math.sign(pos.getX(i)) * r);
+      pos.setZ(i, pos.getZ(i) - Math.sign(pos.getZ(i)) * r);
+    }
+    g.computeVertexNormals();
+    return g;
+  }
+
+  const matPlaca = new THREE.MeshStandardMaterial({
+    map: texturaPlaca(), color: 0xFFFFFF, roughness: .62, metalness: .22 });
+  const matBorda = new THREE.MeshStandardMaterial({
+    color: C.placa, roughness: .7, metalness: .2 });
+  const matChip = new THREE.MeshStandardMaterial({
+    color: C.chip, roughness: .34, metalness: .62 });
+  const matLatao = new THREE.MeshStandardMaterial({
+    color: C.latao, roughness: .28, metalness: .95 });
+  const matEscuro = new THREE.MeshStandardMaterial({
+    color: 0x120D0B, roughness: .52, metalness: .4 });
+
+  /* a placa: topo texturizado, laterais lisas */
+  const L = 9.6, P = 6.6, E = .20;
+  const placa = new THREE.Mesh(caixa(L, E, P, .05),
+    [matBorda, matBorda, matPlaca, matBorda, matBorda, matBorda]);
+  grupo.add(placa);
+
+  /* o chip central */
+  const chip = new THREE.Mesh(caixa(2.9, .30, 2.9, .07), matChip);
+  chip.position.y = E / 2 + .15;
+  grupo.add(chip);
+
+  /* a tampa do chip, com a sigla gravada */
+  function texturaTampa() {
+    const c = document.createElement('canvas'); c.width = c.height = 512;
+    const g = c.getContext('2d');
+    g.fillStyle = '#1C1511'; g.fillRect(0, 0, 512, 512);
+    g.strokeStyle = 'rgba(185,138,62,.22)'; g.lineWidth = 3;
+    g.strokeRect(28, 28, 456, 456);
+    g.fillStyle = 'rgba(222,196,163,.80)';
+    g.font = '400 190px Anton, Impact, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('IA', 256, 262);
+    g.fillStyle = 'rgba(185,138,62,.42)';
+    g.font = '600 26px Barlow Condensed, Arial Narrow, sans-serif';
+    g.fillText('MS\u2013CORE', 256, 400);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = rend.capabilities.getMaxAnisotropy();
+    return t;
+  }
+  const matTampaTopo = new THREE.MeshStandardMaterial({
+    map: texturaTampa(), roughness: .3, metalness: .58 });
+  const matTampaLado = new THREE.MeshStandardMaterial({
+    color: 0x1C1511, roughness: .3, metalness: .58 });
+  const tampa = new THREE.Mesh(caixa(2.26, .07, 2.26, .04),
+    [matTampaLado, matTampaLado, matTampaTopo, matTampaLado, matTampaLado, matTampaLado]);
+  tampa.position.y = E / 2 + .33;
+  grupo.add(tampa);
+
+  /* O NÚCLEO. Antes era um plano de cor chapada e lia como TINTA, não
+     como luz — o topo do chip saía esverdeado. Luz tem centro e tem
+     queda: agora é um degradê radial em mistura aditiva, que é o que o
+     olho aceita como brilho. */
+  function texturaHalo() {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const d = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+    d.addColorStop(0,   'rgba(255,228,170,1)');
+    d.addColorStop(.28, 'rgba(215,146,11,.52)');
+    d.addColorStop(1,   'rgba(215,146,11,0)');
+    g.fillStyle = d; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+  const matNucleo = new THREE.MeshBasicMaterial({
+    map: texturaHalo(), transparent: true, opacity: .1,
+    blending: THREE.AdditiveBlending, depthWrite: false });
+  const nucleo = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 3.3), matNucleo);
+  nucleo.rotation.x = -Math.PI / 2;
+  nucleo.position.y = E / 2 + .40;
+  grupo.add(nucleo);
+
+  /* --- os pinos do chip, em InstancedMesh -------------------------------
+     Duzentos pinos como Mesh separados seriam 200 chamadas de desenho.
+     Instanciado é UMA. */
+  const NP = 26, pinoG = caixa(.055, .05, .30, .012);
+  const pinos = new THREE.InstancedMesh(pinoG, matLatao, NP * 4);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  const ex = new THREE.Vector3(1, 1, 1), eixoY = new THREE.Vector3(0, 1, 0);
+  let n = 0;
+  for (let lado = 0; lado < 4; lado++) {
+    q.setFromAxisAngle(eixoY, lado * Math.PI / 2);
+    for (let i = 0; i < NP; i++) {
+      const d = (i - (NP - 1) / 2) * .105;
+      const v = new THREE.Vector3(d, E / 2 + .10, 1.58).applyQuaternion(q);
+      pinos.setMatrixAt(n++, m4.compose(v, q, ex));
+    }
+  }
+  grupo.add(pinos);
+
+  /* --- os componentes em volta ------------------------------------------
+     Semente fixa: a placa é a MESMA a cada visita. Layout sorteado a cada
+     carregamento é desenho que ninguém assinou. */
+  let s2 = 991;
+  const r2 = () => (s2 = (s2 * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const ocupado = (x, z) => Math.abs(x) < 2.3 && Math.abs(z) < 2.3;
+
+  for (let i = 0; i < 26; i++) {
+    let x, z, tent = 0;
+    do { x = (r2() - .5) * (L - 1.3); z = (r2() - .5) * (P - 1.3); }
+    while (ocupado(x, z) && ++tent < 30);
+    if (ocupado(x, z)) continue;
+
+    const tipo = r2();
+    if (tipo < .42) {                                   /* chip pequeno */
+      const w = .44 + r2() * .62, d = .34 + r2() * .5;
+      const m = new THREE.Mesh(caixa(w, .12 + r2() * .1, d, .03), matEscuro);
+      m.position.set(x, E / 2 + .07, z);
+      m.rotation.y = (r2() > .5 ? 0 : Math.PI / 2);
+      grupo.add(m);
+      const nPinos = 2 + ((r2() * 5) | 0);
+      for (let k = 0; k < nPinos; k++) {
+        const p = new THREE.Mesh(caixa(.05, .035, .11, .01), matLatao);
+        p.position.set(x + (k - (nPinos - 1) / 2) * .1, E / 2 + .04, z + d / 2 + .05);
+        p.rotation.y = m.rotation.y;
+        grupo.add(p);
+      }
+    } else if (tipo < .62) {                            /* capacitor */
+      const h = .3 + r2() * .42;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(.14, .14, h, 20),
+        new THREE.MeshStandardMaterial({ color: 0x2A1E16, roughness: .36, metalness: .72 }));
+      m.position.set(x, E / 2 + h / 2, z);
+      grupo.add(m);
+      const topo = new THREE.Mesh(new THREE.CylinderGeometry(.115, .115, .02, 20), matLatao);
+      topo.position.set(x, E / 2 + h + .005, z);
+      grupo.add(topo);
+    } else if (tipo < .82) {                            /* conector */
+      const nn = 3 + ((r2() * 7) | 0);
+      const base = new THREE.Mesh(caixa(nn * .11 + .08, .1, .22, .02), matEscuro);
+      base.position.set(x, E / 2 + .05, z);
+      grupo.add(base);
+      for (let k = 0; k < nn; k++) {
+        const p = new THREE.Mesh(caixa(.045, .20, .045, .008), matLatao);
+        p.position.set(x + (k - (nn - 1) / 2) * .11, E / 2 + .18, z);
+        grupo.add(p);
+      }
+    } else {                                            /* resistor rente */
+      const m = new THREE.Mesh(caixa(.2, .055, .1, .012),
+        new THREE.MeshStandardMaterial({ color: 0x3A2A1C, roughness: .64, metalness: .2 }));
+      m.position.set(x, E / 2 + .03, z);
+      m.rotation.y = r2() * Math.PI;
+      grupo.add(m);
+    }
+  }
+
+  /* --- a fita: o cabo que sai da placa, como na referência --------------- */
+  const fitaG = new THREE.PlaneGeometry(1.5, 5.4, 1, 26);
+  const fp = fitaG.attributes.position;
+  for (let i = 0; i < fp.count; i++) {
+    /* O clamp nao e paranoia: getY() na borda devolve -2.7000000000000002,
+       entao t da -3.7e-17 e `Math.pow(negativo, 2.1)` e NaN. Um vertice
+       NaN contamina a esfera delimitadora inteira e o three passa a
+       reclamar a cada quadro. */
+    const t = Math.min(1, Math.max(0, (fp.getY(i) + 2.7) / 5.4));
+    fp.setZ(i, -Math.pow(t, 2.1) * 1.5 + Math.sin(t * 5) * .05);
+    fp.setY(i, fp.getY(i) * (1 - t * .1));
+  }
+  fitaG.computeVertexNormals();
+  const fita = new THREE.Mesh(fitaG, new THREE.MeshStandardMaterial({
+    color: 0x1A1310, roughness: .54, metalness: .46, side: THREE.DoubleSide }));
+  fita.rotation.set(-Math.PI / 2 + .1, 0, .16);
+  fita.position.set(-1.5, -.02, 3.1);
+  grupo.add(fita);
+
+  /* --- A CORRENTE -------------------------------------------------------
+     Oito caminhos da borda até o chip. Cada um leva um segmento que acende
+     e some nas pontas — sem o fade a luz pisca ao dar a volta. */
+  const CAM = [];
+  for (let i = 0; i < 8; i++) {
+    const lado = i % 4, t = ((i / 8) - .45) * 1.5;
+    let a, b;
+    if (lado === 0) { a = [-L / 2, t * P * .4]; b = [-1.62, t * 1.3]; }
+    if (lado === 1) { a = [ L / 2, t * P * .4]; b = [ 1.62, t * 1.3]; }
+    if (lado === 2) { a = [t * L * .4, -P / 2];  b = [t * 1.3, -1.62]; }
+    if (lado === 3) { a = [t * L * .4,  P / 2];  b = [t * 1.3,  1.62]; }
+    const co = (lado < 2) ? [b[0] + Math.sign(a[0] - b[0]) * 1.1, a[1]]
+                          : [a[0], b[1] + Math.sign(a[1] - b[1]) * 1.1];
+    CAM.push([a, co, b]);
+  }
+
+  const matCorrente = new THREE.MeshBasicMaterial({
+    color: C.luz, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false });
+  const correntes = CAM.map((_, i) => {
+    const m = new THREE.Mesh(caixa(.5, .018, .07, .006), matCorrente.clone());
+    m.position.y = E / 2 + .012;
+    grupo.add(m);
+    return { malha: m, fase: i / CAM.length };
+  });
+
+  function andar(c, i, p) {                 /* p de 0 a 1 ao longo do caminho */
+    const [a, co, b] = CAM[i];
+    const meio = .55;
+    let x, z, ang;
+    if (p < meio) {
+      const u = p / meio;
+      x = a[0] + (co[0] - a[0]) * u; z = a[1] + (co[1] - a[1]) * u;
+      ang = Math.atan2(co[1] - a[1], co[0] - a[0]);
+    } else {
+      const u = (p - meio) / (1 - meio);
+      x = co[0] + (b[0] - co[0]) * u; z = co[1] + (b[1] - co[1]) * u;
+      ang = Math.atan2(b[1] - co[1], b[0] - co[0]);
+    }
+    c.malha.position.x = x; c.malha.position.z = z;
+    c.malha.rotation.y = -ang;
+    /* some nas duas pontas: 0 -> 1 -> 0 */
+    c.malha.material.opacity = Math.sin(Math.PI * Math.min(1, Math.max(0, p))) * .95;
+  }
+
+  /* --- o chão: a placa precisa de onde pousar ---------------------------- */
+  const chaoG = new THREE.PlaneGeometry(30, 30);
+  const chaoC = document.createElement('canvas'); chaoC.width = chaoC.height = 256;
+  const cg = chaoC.getContext('2d');
+  const rg = cg.createRadialGradient(128, 128, 10, 128, 128, 126);
+  rg.addColorStop(0, 'rgba(10,7,6,.85)'); rg.addColorStop(1, 'rgba(10,7,6,0)');
+  cg.fillStyle = rg; cg.fillRect(0, 0, 256, 256);
+  const chao = new THREE.Mesh(chaoG, new THREE.MeshBasicMaterial({
+    map: new THREE.CanvasTexture(chaoC), transparent: true, depthWrite: false }));
+  chao.rotation.x = -Math.PI / 2;
+  chao.position.y = -1.5;
+  chao.scale.set(.46, .46, .46);
+  cena.add(chao);
+
+  /* --- TAMANHO ----------------------------------------------------------- */
+  /* ONDE A CÂMERA FICA — por conta, não por número chutado.
+     A meia-largura visível é `d * tan(fov/2) * proporção`. Invertendo,
+     a distância que faz a placa caber é `meia / (tan * proporção)`.
+     Isso importa porque a proporção muda MUITO: num desktop a seção é
+     1,30 e num celular é 0,33 — a mesma distância que enquadra a placa
+     no computador corta ela pela metade no telefone. Câmera com posição
+     fixa só funciona numa tela.
+
+     No desktop ela mira à esquerda do centro e a placa pousa do lado
+     direito, onde o texto não mora. No celular ela mira ACIMA da placa,
+     que então desce no quadro e deixa o topo livre para o texto. */
+  const TG = Math.tan(26 * Math.PI / 360);
+  let base = { x: 2, y: 16, z: 24, mira: -3.4, miraY: 0 };
+  function medir() {
+    const r = secao.getBoundingClientRect();
+    const w = Math.max(1, r.width), h = Math.max(1, r.height);
+    rend.setSize(w, h, false);
+    cam.aspect = w / h;
+    const estreito = w < 900;
+    const meia = estreito ? 3.1 : 8.6;          /* no celular e um CORTE, nao a placa toda */
+    const d = Math.min(110, Math.max(24, meia / (TG * cam.aspect)));
+    const elev = estreito ? .88 : .60;          /* radianos acima do horizonte */
+    base = { x: estreito ? 0 : 2,
+             y: d * Math.sin(elev), z: d * Math.cos(elev),
+             mira: estreito ? 0 : -3.4, miraY: estreito ? 3.4 : 0 };
+    cam.position.set(base.x, base.y, base.z);
+    cam.lookAt(base.mira, base.miraY, 0);
+    cam.updateProjectionMatrix();
+  }
+  medir();
+  addEventListener('resize', medir);
+
+  /* --- O LAÇO ------------------------------------------------------------
+     Só roda com a seção na tela: cena fora de quadro que continua
+     desenhando é bateria queimada à toa.
+
+     Mas a pergunta "está na tela?" é lida SÍNCRONA, não por
+     IntersectionObserver. O observador parece mais elegante e é a
+     armadilha de sempre: ele entrega a resposta quando o navegador
+     quiser, e numa aba em segundo plano esse atraso passa de segundo.
+     Enquanto a resposta não chega, `naTela` continua falso — e a cena
+     fica PRETA. Uma leitura de retângulo por quadro não custa nada
+     perto de renderizar WebGL, e nunca está atrasada. */
+  const naTela = () => {
+    const r = secao.getBoundingClientRect();
+    return r.bottom > -160 && r.top < innerHeight + 160;
+  };
+
+  let pax = 0, pay = 0, px = 0, py = 0;
+  if (!reduz && matchMedia('(hover:hover) and (pointer:fine)').matches) {
+    secao.addEventListener('pointermove', e => {
+      const r = secao.getBoundingClientRect();
+      pax = (e.clientX - r.left) / r.width - .5;
+      pay = (e.clientY - r.top) / r.height - .5;
+    }, { passive: true });
+    secao.addEventListener('pointerleave', () => { pax = pay = 0; });
+  }
+
+  let t0 = performance.now();
+  function quadro(agora) {
+    requestAnimationFrame(quadro);
+    if (!naTela()) { t0 = agora; return; }
+    const dt = Math.min(.05, (agora - t0) / 1000); t0 = agora;
+    const t = agora / 1000;
+
+    if (!reduz) {
+      /* a deriva: giro lento e flutuação. Dois senos de período diferente
+         para o movimento não ter batida audível. */
+      grupo.rotation.y = -.42 + Math.sin(t * .13) * .14;
+      grupo.rotation.x = -.055 + Math.sin(t * .097) * .035;
+      grupo.position.y = Math.sin(t * .21) * .16;
+
+      px += (pax - px) * .055; py += (pay - py) * .055;
+      cam.position.x += (base.x + px * -3.4 - cam.position.x) * .08;
+      cam.position.y += (base.y + py * -2.2 - cam.position.y) * .08;
+      cam.lookAt(base.mira, base.miraY, 0);
+
+      let maior = 0;
+      for (let i = 0; i < correntes.length; i++) {
+        const c = correntes[i];
+        const p = ((t * .42 + c.fase) % 1);
+        andar(c, i, p);
+        if (p > .82) maior = Math.max(maior, (p - .82) / .18);
+      }
+      matNucleo.opacity = .07 + maior * .28;
+      contra.intensity = 30 + maior * 26;
+    } else {
+      for (let i = 0; i < correntes.length; i++) andar(correntes[i], i, .5);
+      matNucleo.opacity = .16;
+    }
+    rend.render(cena, cam);
+  }
+  requestAnimationFrame(quadro);
+}
+
 </script>
 </body>
 </html>
