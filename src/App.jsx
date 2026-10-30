@@ -374,6 +374,59 @@ function App(){
         gsap.fromTo('.method-route-fill',{scaleX:0},{scaleX:1,ease:'none',scrollTrigger:{trigger:'.method-system',start:'top 75%',end:'bottom 45%',scrub:perseguir}})
         gsap.utils.toArray('.method-card').forEach((el,i)=>gsap.from(el,{opacity:0,y:45,duration:.75,delay:i*.08,scrollTrigger:{trigger:el,start:'top 88%',once:true}}))
         gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:perseguir}})
+
+        /* O FEIXE RODADO PELO DEDO.
+
+           O video nunca toca sozinho: quem anda com ele e a rolagem. O
+           progresso da secao vira `currentTime`, entao os dois raios saem
+           do meio e voltam no ritmo em que a pessoa rola -- e se ela rolar
+           de volta, eles voltam tambem, porque e a mesma linha do tempo
+           percorrida ao contrario, nao uma animacao disparada.
+
+           Duas protecoes que esse truque exige:
+
+           Escrever `currentTime` manda o navegador procurar o quadro. Pedir
+           isso 60x por segundo com valores que mal mudaram e trabalho que
+           ele faz e joga fora, entao o alvo e arredondado para o quadro
+           mais proximo (24fps) e so vai quando o quadro muda de verdade.
+
+           E o iOS recusa qualquer mexida no tempo de um video que nunca
+           tocou. O destravamento e tocar e pausar no mesmo instante, no
+           primeiro toque da pessoa na pagina -- um gesto do usuario, que e
+           o que o Safari exige. */
+        const feixe=document.querySelector('.mm-video')
+        if(feixe){
+          const QUADRO=1/24
+          let destravado=false,ultimo=-1
+          const destravar=()=>{
+            if(destravado)return
+            destravado=true
+            feixe.play().then(()=>feixe.pause()).catch(()=>{})
+            removeEventListener('touchstart',destravar);removeEventListener('pointerdown',destravar)
+          }
+          addEventListener('touchstart',destravar,{passive:true,once:false})
+          addEventListener('pointerdown',destravar,{passive:true,once:false})
+          const andar=p=>{
+            const dur=feixe.duration
+            if(!dur||!isFinite(dur))return
+            const alvo=Math.round(p*(dur-QUADRO)/QUADRO)*QUADRO
+            if(alvo===ultimo)return
+            ultimo=alvo
+            try{feixe.currentTime=alvo}catch{/* ainda sem metadados */}
+          }
+          const passo={p:0}
+          gsap.to(passo,{p:1,ease:'none',
+            /* O gatilho e o CARTAO, nao a secao. A <figure> mora no canto
+               de baixo de uma secao de 118vh, entao usar a secao fazia o
+               ciclo comecar quando ela apontava -- e quando o cartao
+               finalmente aparecia os raios ja tinham saido. Ancorado nele,
+               o ciclo inteiro acontece enquanto ele atravessa a tela: ele
+               entra com o feixe fechado, abre no meio do caminho e fecha
+               de novo antes de sair por cima. */
+            scrollTrigger:{trigger:'.manifesto-media',start:'top bottom',end:'bottom 25%',scrub:perseguir},
+            onUpdate(){andar(passo.p)}})
+          feixe.addEventListener('loadedmetadata',()=>{ultimo=-1;andar(passo.p)})
+        }
         /* O feixe e o brilho da borda só rodam com a seção em cena. Animação
            em laço fora de quadro é bateria queimada sem ninguém olhando. */
         /* `cena-viva` e a chave geral das animacoes em laco: o CSS deixa
@@ -505,7 +558,7 @@ function App(){
   const cenaFecho=useMemo(()=><>
       <AIStory/>
       <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
-      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><i className="mm-feixe" aria-hidden="true"/><i className="led" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
+      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><video className="mm-video" src="/video/feixe-manifesto.mp4" muted playsInline preload="auto" aria-hidden="true"/><i className="led" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
       <section className="final-cta final-v4" id="contato"><div className="final-mark">MIND</div><div className="final-content"><div className="final-copy"><p className="section-label" data-final-reveal>07 / DIAGNÓSTICO GRATUITO</p><h2 data-final-reveal>VAMOS OLHAR<br/>O SEU NEGÓCIO<br/><em>DE PERTO.</em></h2><p data-final-reveal>Preencha os campos. A conversa segue direto no WhatsApp com quem entende do assunto — sem robô e sem funil de vendedor.</p><ul className="diagnostic-list" data-final-reveal><li><Check size={16}/>Análise do seu perfil, site e presença digital atual</li><li><Check size={16}/>Os três gargalos que mais travam sua venda hoje</li><li><Check size={16}/>Proposta com escopo e valor fechados, se fizer sentido</li><li><Check size={16}/>Zero compromisso: se não for a hora, a gente fala isso</li></ul><a className="ms-btn ms-btn-dark" href={whatsapp} target="_blank" rel="noreferrer" data-final-reveal><span>PREFIRO CHAMAR DIRETO</span><ArrowUpRight size={18}/></a><p className="direct-contact" data-final-reveal>(61) 99329-1126 · BRASÍLIA/DF · TODO O BRASIL</p></div><ContactForm/></div><footer><Brand/><span>BRASÍLIA/DF · TODO O BRASIL</span><span>© 2026 MIND SCULPTOR</span></footer></section>
   </>,[])
 
