@@ -232,12 +232,13 @@ a[href],button,summary,select,[role="button"],
    de ser o lugar onde as coisas moram e passa a ser só ALTURA DE
    ROLAGEM; quem segura o conteúdo é um palco `sticky` de uma tela.
    Enquanto a altura do <section> passa, o palco fica parado e o
-   vídeo anda. 280vh dão 180vh de curso preso — três rolagens até o
-   portal acender e a seção liberar, a 60vh por rolagem.
+   vídeo anda. 325vh dão 225vh de curso preso: 180vh de vídeo (três
+   rolagens a 60vh) mais 45vh de cauda com o portal já aceso. A seção
+   não solta no último quadro — solta depois de tudo aceso.
    ─────────────────────────────────────────────────────────────── */
 .type-manifesto{
   position:relative!important;
-  height:280vh!important;
+  height:325vh!important;
   min-height:0!important;
   padding:0!important;
   overflow:visible!important;
@@ -269,7 +270,7 @@ a[href],button,summary,select,[role="button"],
 @media(max-width:820px){
   /* no celular o card vai para baixo do texto, então o palco empilha
      e a altura presa encurta: tela estreita cansa mais rápido */
-  .type-manifesto{height:260vh!important}
+  .type-manifesto{height:300vh!important}
   /* no empilhado cabe menos: título + cartão somam quase uma tela, então
      o respiro de cima encolhe para os dois caberem sem corte */
   .manifesto-palco{padding:8vh 22px 0}

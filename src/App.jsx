@@ -426,10 +426,25 @@ function App(){
           addEventListener('touchstart',destravar,{passive:true})
           addEventListener('pointerdown',destravar,{passive:true})
           ScrollTrigger.create({trigger:'.type-manifesto',start:'top bottom+=200%',once:true,onEnter:carregar,onEnterBack:carregar})
+          /* O FECHO.
+             O video NAO termina junto com o pin. Ele termina em 80% do
+             curso, e os 20% que sobram sao o portal ja aceso, parado, antes
+             de a secao soltar.
+
+             Duas razoes. A primeira e o scrub: ele persegue a rolagem com
+             atraso, entao quando o progresso marca 1 o video ainda esta
+             chegando -- medi 7.83 de 7.92 no fim do curso. A secao soltava
+             com o portal quase aceso. A cauda da a ele a folga para
+             alcancar. A segunda e o olho: uma imagem que chega no mesmo
+             instante em que sai nao e vista. O portal precisa de um tempo
+             aceso e parado para ser o fecho da cena, e nao so o ultimo
+             quadro de um arquivo. */
+          const FECHO=.8
           const andar=p=>{
             const dur=corredor.duration
             if(!dur||!isFinite(dur))return
-            const alvo=Math.round(p*(dur-QUADRO)/QUADRO)*QUADRO
+            const q=p<FECHO?p/FECHO:1
+            const alvo=Math.round(q*(dur-QUADRO)/QUADRO)*QUADRO
             if(alvo===ultimo)return
             ultimo=alvo
             try{corredor.currentTime=alvo}catch{/* ainda sem metadados */}
@@ -451,14 +466,20 @@ function App(){
              O curso preso vale 1.0 e e lido como tres rolagens, entao cada
              rolagem e um terco. Os tempos abaixo estao nessa moeda:
 
-               0    ate .50   ato 1 -- o corredor anda com o titulo e o
+             O curso agora tem o trecho do video (ate .80) mais a cauda do
+             portal aceso. As marcas abaixo vivem dentro do trecho do
+             video, por isso sao .80 das de antes -- a METADE DA SEGUNDA
+             rolagem continua sendo a metade da segunda rolagem DE VIDEO.
+
+               0    ate .40   ato 1 -- o corredor anda com o titulo e o
                               cartao na tela, como ate agora
-               .50  ate .72   ato 2 -- comeca na METADE DA SEGUNDA rolagem:
-                              titulo e cartao se retiram e o veu se
+               .40  ate .58   ato 2 -- a metade da segunda rolagem de
+                              video: titulo e cartao se retiram e o veu se
                               dissolve. O video deixa de ser fundo de uma
                               secao e passa a ser a secao
-               .72  ate 1     ato 3 -- o corredor sozinho, em opacidade
+               .58  ate .80   ato 3 -- o corredor sozinho, em opacidade
                               cheia, ate o portal abrir
+               .80  ate 1     o portal aceso, parado. So aqui a secao solta
 
              O cartao sai descendo e o titulo subindo: separar as direcoes
              evita que os dois virem uma coisa so sumindo, e deixa claro que
@@ -478,18 +499,18 @@ function App(){
                duracao 1 fixa a regua: agora tempo e progresso sao a mesma
                coisa, e .50 e exatamente a metade do curso. */
             .to({},{duration:1},0)
-            .to('.manifesto-type', {autoAlpha:0,y:-54,duration:.22,ease:'power2.in'},.50)
-            .to('.manifesto-media',{autoAlpha:0,y:64,scale:.93,duration:.22,ease:'power2.in'},.50)
-            .to('.mm-veu',         {opacity:0,duration:.20,ease:'power1.inOut'},.53)
+            .to('.manifesto-type', {autoAlpha:0,y:-54,duration:.18,ease:'power2.in'},.40)
+            .to('.manifesto-media',{autoAlpha:0,y:64,scale:.93,duration:.18,ease:'power2.in'},.40)
+            .to('.mm-veu',         {opacity:0,duration:.16,ease:'power1.inOut'},.42)
 
           /* E o fecho: a ultima secao nao espera o pin soltar para so
              entao comecar a se montar -- isso daria um corte seco entre o
-             portal e ela. Perto do fim do video as revelacoes dela sao
-             disparadas, entao quando o palco solta ela JA esta se
-             formando, e o movimento parece continuar de uma para a outra.
+             portal e ela. Assim que o video fecha e o portal acende, as
+             revelacoes dela sao disparadas: elas correm durante a cauda,
+             entao quando o palco solta ela JA esta se formando, e o movimento parece continuar de uma para a outra.
              playFinal so toca uma vez; rolar de volta nao desmonta. */
           ScrollTrigger.create({trigger:'.type-manifesto',start:'top top',end:'bottom bottom',
-            onUpdate:self=>{if(self.progress>.86)playFinal()}})
+            onUpdate:self=>{if(self.progress>.84)playFinal()}})
         }
 
         /* O brilho da borda só roda com a seção em cena. Animação
