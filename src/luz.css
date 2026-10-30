@@ -180,19 +180,52 @@
    pivô fica no ponto de impacto para que endireitar o feixe não arraste
    o clarão para fora do topo do cartão.
    --------------------------------------------------------------------------- */
-.manifesto-media{
-  --fx-largura:208%;   /* largura do vídeo, relativa à do cartão */
-  --fx-base:89%;       /* a que altura do vídeo mora o clarão */
+.type-manifesto{
+  /* O ERRO DA PRIMEIRA VERSAO estava aqui: a largura era 208% do CARTAO.
+     Isso prendia o feixe ao tamanho da <figure> e o resultado era uma
+     caixinha de video solta numa secao escura. No huly.io o feixe nao
+     acompanha o cartao: ele E o fundo, atravessa a tela toda, e o cartao
+     esta mergulhado dentro dele.
+
+     A regra que faz isso funcionar: o video precisa ser MAIOR que a
+     secao nos quatro lados, para que o `overflow:hidden` dela coma as
+     bordas antes que alguem as veja. Nao basta ser largo -- a borda que
+     aparecia era a de BAIXO, onde a faixa clara do chao do render corta
+     reto. Com o video descendo alem do pe da secao, ela some.
+
+     As contas, medidas na pagina: o topo do cartao fica a 626px do topo
+     da secao e a 436px do pe dela. Entao, com a ancora na metade da
+     altura (--fx-base:50%), o video precisa de 1252px para cobrir os
+     dois lados. 102vw cobre telas largas, 145vh cobre telas altas, e o
+     max() pega o que for maior nas duas. A largura sai da altura na
+     proporcao exata do arquivo, 16:9, entao nada e esticado. */
+  --fx-altura:max(102vw,145vh);
+  --fx-largura:calc(var(--fx-altura) * 16 / 9);
+
+  /* 50% e onde moram os dois raios no quadro. Ancorar aqui faz eles
+     sairem exatamente na linha do topo do cartao -- de tras dele, para
+     os dois lados -- enquanto o clarao e a base do cone ficam abaixo,
+     escondidos atras da <figure> e do pe da secao. */
+  --fx-base:50%;
 }
 .mm-video{
   position:absolute;z-index:0;pointer-events:none;
   left:50%;top:0;
   width:var(--fx-largura);
-  aspect-ratio:16/9;
-  /* sobe 89% da PRÓPRIA altura — o clarão para em cima do topo do cartão */
+  height:var(--fx-altura);
+  object-fit:cover;
+
+  /* sobe metade da PROPRIA altura: a linha dos raios para no topo do cartao */
   translate:-50% calc(var(--fx-base) * -1);
   transform-origin:50% var(--fx-base);
-  rotate:3deg;
+  rotate:3deg;   /* desfaz os -3deg do cartao: luz que desce do alto nao e torta */
+
+  /* A curva que poe a fumaca no chao esta ASSADA no arquivo, nao aqui:
+     um filter em tempo real sobre um elemento de 2600x1500 e conta que
+     o celular paga a cada quadro, e essa secao ja tem video com blend.
+     Sobra a opacidade, que e de graca -- e util: e por ela que o feixe
+     passa por tras do texto sem competir com ele. */
+  opacity:.78;
   mix-blend-mode:screen;
 }
 /* a foto e a legenda ficam na frente do feixe */
@@ -244,9 +277,9 @@
 }
 
 @media(max-width:900px){
-  /* no celular o cartao ja ocupa 89vw: 208% dele seria quase o dobro da
-     tela em pintura desperdicada, quase toda preta e invisivel */
-  .manifesto-media{--fx-largura:152%}
+  /* o celular e estreito e alto: quem manda na cobertura passa a ser a
+     altura da tela, e o max() ja resolve -- so aumenta a folga */
+  .type-manifesto{--fx-altura:max(190vw,135vh)}
 }
 
 @media(prefers-reduced-motion:reduce){
