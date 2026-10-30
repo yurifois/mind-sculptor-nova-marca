@@ -152,11 +152,18 @@ function HeroDustMorph(){
     const target=document.querySelector('.scene-2 h2'),sceneCopy=document.querySelector('.scene-2 .scene-copy')
     if(!canvas||!hero||!stage||!target||!sceneCopy)return undefined
     const ctx=canvas.getContext('2d'),reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const celular=innerWidth<720
     let frame=0,alive=true,points=[],width=innerWidth,height=innerHeight,dpr=1,targetsReady=false,scrollProgress=0
+    let ultimoQuadro=0,ultimoMat=-1
     const clamp=n=>Math.max(0,Math.min(1,n))
     const smooth=t=>t*t*(3-2*t)
     const buildSphere=()=>{
-      const total=innerWidth<720?1700:3200,phi=Math.PI*(3-Math.sqrt(5))
+      /* Cada particula custa um beginPath + arc + fill proprios -- sao
+         chamadas de desenho individuais, nao um lote. 1700 delas a 60fps
+         dao 102 mil chamadas por segundo so para a poeira. Numa tela de
+         telefone 820 particulas continuam lendo como poeira, e custam um
+         quinto disso. */
+      const total=celular?820:3200,phi=Math.PI*(3-Math.sqrt(5))
       points=Array.from({length:total},(_,i)=>{
         const y=1-(i/(total-1))*2,r=Math.sqrt(Math.max(0,1-y*y)),a=phi*i
         return {sx:Math.cos(a)*r,sy:y,sz:Math.sin(a)*r,tx:0,ty:0,color:[244,237,227],seed:Math.random()*Math.PI*2,hot:Math.random()<.09}
@@ -185,7 +192,11 @@ function HeroDustMorph(){
     }
     const resize=()=>{
       const rect=stage.getBoundingClientRect();width=Math.max(320,rect.width||innerWidth);height=Math.max(520,rect.height||innerHeight)
-      dpr=Math.min(window.devicePixelRatio||1,1.6)
+      /* O S25 Ultra tem devicePixelRatio perto de 3.5. Cada ponto a mais
+         de dpr e area de canvas que precisa ser limpa e repintada todo
+         quadro, ao quadrado. Poeira desfocada nao mostra resolucao: 1.1
+         no celular pinta menos da metade dos pixels que 1.6 pintava. */
+      dpr=Math.min(window.devicePixelRatio||1,celular?1.1:1.6)
       canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr)
       ctx.setTransform(dpr,0,0,dpr,0,0)
       targetsReady=false;requestAnimationFrame(sampleHeadline)
@@ -196,12 +207,25 @@ function HeroDustMorph(){
     }
     const draw=now=>{
       if(!alive)return
+      frame=requestAnimationFrame(draw)
+      /* Poeira girando nao precisa de 60fps: a 32ms ela le igual e sobra
+         metade do orcamento de quadro para a rolagem responder ao dedo. */
+      if(celular&&now-ultimoQuadro<32)return
+      ultimoQuadro=now
       const morph=targetsReady?smooth(clamp((scrollProgress-.045)/.255)):0
       const materialize=smooth(clamp((scrollProgress-.285)/.125))
       const dustAlpha=1-materialize*.98
-      sceneCopy.style.opacity=String(materialize)
-      sceneCopy.style.filter=`blur(${((1-materialize)*10).toFixed(2)}px)`
-      sceneCopy.style.transform=`translateY(${((1-materialize)*18).toFixed(2)}px)`
+      /* Escrever em .style todo quadro invalida o layout do titulo mesmo
+         quando o valor nao mudou -- e parado isso acontece 60x por
+         segundo a toa. E blur() sobre texto Anton de 68px e dos filtros
+         mais caros que existem: no celular ele sai e ficam so opacity e
+         translate, que a GPU resolve sem repintar nada. */
+      if(materialize!==ultimoMat){
+        ultimoMat=materialize
+        sceneCopy.style.opacity=String(materialize)
+        sceneCopy.style.transform=`translateY(${((1-materialize)*18).toFixed(2)}px)`
+        if(!celular)sceneCopy.style.filter=`blur(${((1-materialize)*10).toFixed(2)}px)`
+      }
       const angle=now*.00014*(1-morph*.72),tilt=-.18+morph*.14
       const ca=Math.cos(angle),sa=Math.sin(angle),ct=Math.cos(tilt),st=Math.sin(tilt)
       ctx.clearRect(0,0,width,height);ctx.globalCompositeOperation='lighter'
@@ -217,12 +241,18 @@ function HeroDustMorph(){
         ctx.beginPath();ctx.fillStyle=`rgba(${rr},${gg},${bb},${alpha})`;ctx.arc(px,py,(1.35-morph*.22)*perspective,0,Math.PI*2);ctx.fill()
       })
       ctx.globalCompositeOperation='source-over'
-      frame=requestAnimationFrame(draw)
     }
+    /* O laco era infinito: a poeira continuava sendo desenhada enquanto o
+       visitante lia os servicos, a IA e o rodape, roubando quadros de
+       secoes que nem sabem que ela existe. Agora ele so existe enquanto a
+       hero esta por perto. */
+    const ligar=()=>{if(alive&&!frame)frame=requestAnimationFrame(draw)}
+    const desligar=()=>{if(frame){cancelAnimationFrame(frame);frame=0}}
+    const olho=new IntersectionObserver(([e])=>{e.isIntersecting?ligar():desligar()},{rootMargin:'15% 0px'})
     buildSphere();resize();readScroll();document.fonts?.ready?.then(()=>{if(alive)sampleHeadline()})
     if(reduced){sceneCopy.style.opacity='1';sceneCopy.style.filter='none';sceneCopy.style.transform='none';return undefined}
-    addEventListener('resize',resize);addEventListener('scroll',readScroll,{passive:true});frame=requestAnimationFrame(draw)
-    return()=>{alive=false;cancelAnimationFrame(frame);removeEventListener('resize',resize);removeEventListener('scroll',readScroll);sceneCopy.style.opacity='';sceneCopy.style.filter='';sceneCopy.style.transform=''}
+    addEventListener('resize',resize);addEventListener('scroll',readScroll,{passive:true});olho.observe(hero)
+    return()=>{alive=false;desligar();olho.disconnect();removeEventListener('resize',resize);removeEventListener('scroll',readScroll);sceneCopy.style.opacity='';sceneCopy.style.filter='';sceneCopy.style.transform=''}
   },[])
   return <div className="hero-dust" aria-hidden="true"><canvas ref={canvasRef}/><span>POEIRA → MENSAGEM</span></div>
 }
@@ -300,7 +330,11 @@ function App(){
        suavidade. No celular o dedo esta ENCOSTADO no conteudo: um segundo
        entre o dedo e a imagem e exatamente a sensacao de que a pagina nao
        responde. No toque a perseguicao tem que ser curta. */
-    const perseguir=ScrollTrigger.isTouch===1?.3:.7
+    /* E tem um agravante so da hero: a poeira do canvas le a rolagem
+       direto, sem scrub nenhum, enquanto as cenas vinham com atraso. Os
+       dois andavam fora de passo e o olho le desencontro como engasgo.
+       Com a perseguicao curta eles voltam a andar juntos. */
+    const perseguir=ScrollTrigger.isTouch===1?.12:.7
 
     const ctx=gsap.context(()=>{
       gsap.timeline({defaults:{ease:'power3.out'}}).to('.loader-center i',{scaleX:1,duration:.6}).to('.loader',{yPercent:-100,duration:.9,ease:'power4.inOut'},.72).from('.site-header',{y:-90,duration:.65},1.18)

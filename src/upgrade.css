@@ -170,3 +170,50 @@ a[href],button,summary,select,[role="button"],
    no consentimento, que é caixa de marcar e aí a mão está certa */
 .contact-form label{cursor:default}
 .contact-form .form-consent,.contact-form .form-consent *{cursor:pointer!important}
+
+
+/* ───────────────────────────────────────────────────────────────
+   O PESO DA HERO NO CELULAR
+   Três coisas custavam quadro a cada rolagem do dedo, e nenhuma
+   delas era a animação em si.
+   ─────────────────────────────────────────────────────────────── */
+@media(max-width:900px){
+
+  /* 1. backdrop-filter dentro de um palco fixo, sobre imagens que se
+        movem em parallax. O navegador precisa reamostrar e desfocar de
+        novo tudo que passa atrás da pílula, a CADA quadro, a vida
+        inteira da seção. É o mesmo gasto que já tiramos do cabeçalho
+        e que tinha ficado aqui. A borda e o fundo sólido entregam a
+        mesma leitura por preço zero. */
+  .hero-nav{-webkit-backdrop-filter:none;backdrop-filter:none;
+    background:rgba(12,8,7,.78);border-color:rgba(244,237,227,.17)}
+
+  /* 2. feGaussianBlur é filtro de SVG: no celular ele roda na CPU, não
+        na GPU. São dois por cena, três cenas na hero e sete traços na
+        seção de IA — vinte e três desfoques gaussianos de tela cheia
+        recalculados enquanto o dedo arrasta. Sem o filtro o traço fica
+        mais seco, então ele ganha um pouco de corpo e opacidade para
+        continuar lendo como pulso de luz. */
+  .signal-pulse,.circuit-pulse,.service-route-pulse{filter:none!important}
+  .signal-pulse{stroke-width:7;opacity:.92}
+  .circuit-pulse{stroke-width:9}
+
+  /* 3. As cenas trocam com autoAlpha + scale. Sem aviso, o navegador
+        re-rasteriza a cena inteira em cada escala nova; avisado, ele
+        promove a camada uma vez e só a recompõe. A imagem de dentro já
+        tinha o aviso, o palco que a carrega não tinha. */
+  .hero-scene{will-change:transform,opacity}
+
+  /* 4. O curso da hero era 240vh, ou seja 140vh de rolagem presa para
+        duas trocas de texto -- mais o trecho morto no fim, que é o
+        quarto arrasto que não fazia nada. 200vh dá meia tela por
+        troca: um arrasto, um texto. */
+  .hero-story{height:200vh}
+}
+
+/* Rolagem presa é a única hora em que o navegador não pode adivinhar o
+   que vem a seguir. Dizer de antemão que a barra não muda de largura
+   evita o recálculo de layout no meio do movimento. */
+@media(max-width:900px){
+  .hero-sticky,.ai-sticky{contain:layout paint}
+}
