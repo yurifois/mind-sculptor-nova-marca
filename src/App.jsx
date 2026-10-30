@@ -336,6 +336,34 @@ function App(){
        Com a perseguicao curta eles voltam a andar juntos. */
     const perseguir=ScrollTrigger.isTouch===1?.12:.7
 
+    /* O MENU DEPOIS DO HERO.
+       Dentro da hero o cabecalho e parte da cena. Passada ela, ele vira
+       uma barra escura atravessada em cima de tudo que vem depois -- e a
+       partir daqui o que vem depois sao imagens de tela cheia e, no fim,
+       um corredor de luz. Entao ele recua: perde o fundo, perde o blur e
+       fica quase transparente.
+
+       Recuar nao e sumir. Um menu que desaparece de vez obriga a rolar de
+       volta ao topo para navegar. Ele volta inteiro em tres situacoes: o
+       ponteiro em cima, o foco de teclado dentro dele (quem navega por Tab
+       precisa ver onde esta) e a rolagem PARA CIMA -- que e o gesto
+       universal de "quero os controles de volta", e e o unico que funciona
+       no celular, onde nao existe ponteiro. */
+    const corpo=document.body
+    ScrollTrigger.create({trigger:'.hero-story',start:'bottom top+=90',
+      onEnter:()=>corpo.classList.add('nav-discreta'),
+      onLeaveBack:()=>corpo.classList.remove('nav-discreta')})
+    let ultimoY=scrollY,chamada=false
+    const vigiarNav=()=>{
+      const y=scrollY
+      /* A folga de 8px evita que o tremor de uma rolagem inercial fique
+         ligando e desligando a classe. */
+      if(y<ultimoY-8){if(!chamada){chamada=true;corpo.classList.add('nav-chamada')}}
+      else if(y>ultimoY+8){if(chamada){chamada=false;corpo.classList.remove('nav-chamada')}}
+      ultimoY=y
+    }
+    addEventListener('scroll',vigiarNav,{passive:true})
+
     const ctx=gsap.context(()=>{
       gsap.timeline({defaults:{ease:'power3.out'}}).to('.loader-center i',{scaleX:1,duration:.6}).to('.loader',{yPercent:-100,duration:.9,ease:'power4.inOut'},.72).from('.site-header',{y:-90,duration:.65},1.18)
       if(!reduced){
@@ -359,7 +387,22 @@ function App(){
             gsap.set(grupo,fechado(opaco))
             fechados.push([el,grupo,opaco])
             gsap.to(grupo,{...aberto(opaco),duration:.92,ease:'power4.out',stagger:escada,
-              scrollTrigger:{trigger:el,start:inicio,once:true}})
+              scrollTrigger:{trigger:el,start:inicio,once:true},
+              /* Quem ja abriu sai da lista da rede. Sem isto a peca fica la
+                 para sempre, e a rede -- que so olha se o item esta na tela
+                 -- torna a abri-la na marra mais tarde, por cima de quem
+                 tiver assumido o controle dela depois.
+
+                 Era o caso do titulo do manifesto: ele vive dentro de um
+                 palco `sticky`, entao esta SEMPRE na tela durante o pin. A
+                 coreografia o levava a zero e a rede o devolvia a
+                 `opacity:1`, desfazendo de quebra o deslocamento da saida.
+                 So nao aparecia porque `autoAlpha` ja havia deixado
+                 `visibility:hidden`, e a rede nao mexe nisso.
+
+                 De quebra a lista esvazia mais cedo e o ouvinte de rolagem
+                 da rede se desliga antes. */
+              onComplete(){const i=fechados.findIndex(f=>f[0]===el);if(i>=0)fechados.splice(i,1)}})
           })
         }
         revelar('[data-reveal]')
@@ -427,9 +470,10 @@ function App(){
           addEventListener('pointerdown',destravar,{passive:true})
           ScrollTrigger.create({trigger:'.type-manifesto',start:'top bottom+=200%',once:true,onEnter:carregar,onEnterBack:carregar})
           /* O FECHO.
-             O video NAO termina junto com o pin. Ele termina em 80% do
-             curso, e os 20% que sobram sao o portal ja aceso, parado, antes
-             de a secao soltar.
+             O video NAO termina junto com o pin. Ele termina em 58% do
+             curso. O que sobra e a cauda: um trecho curto com o portal
+             aceso e parado, e depois os 100svh em que a ULTIMA secao sobe
+             por cima -- com o portal aceso continuando atras dela.
 
              Duas razoes. A primeira e o scrub: ele persegue a rolagem com
              atraso, entao quando o progresso marca 1 o video ainda esta
@@ -439,7 +483,7 @@ function App(){
              instante em que sai nao e vista. O portal precisa de um tempo
              aceso e parado para ser o fecho da cena, e nao so o ultimo
              quadro de um arquivo. */
-          const FECHO=.8
+          const FECHO=.58
           const andar=p=>{
             const dur=corredor.duration
             if(!dur||!isFinite(dur))return
@@ -466,20 +510,22 @@ function App(){
              O curso preso vale 1.0 e e lido como tres rolagens, entao cada
              rolagem e um terco. Os tempos abaixo estao nessa moeda:
 
-             O curso agora tem o trecho do video (ate .80) mais a cauda do
-             portal aceso. As marcas abaixo vivem dentro do trecho do
-             video, por isso sao .80 das de antes -- a METADE DA SEGUNDA
-             rolagem continua sendo a metade da segunda rolagem DE VIDEO.
+             As marcas abaixo vivem dentro do trecho do video, por isso
+             sao sempre FECHO vezes as da regua do video -- a METADE DA
+             SEGUNDA rolagem continua sendo a metade da segunda rolagem DE
+             VIDEO, qualquer que seja o tamanho da cauda.
 
-               0    ate .40   ato 1 -- o corredor anda com o titulo e o
+               0    ate .29   ato 1 -- o corredor anda com o titulo e o
                               cartao na tela, como ate agora
-               .40  ate .58   ato 2 -- a metade da segunda rolagem de
+               .29  ate .42   ato 2 -- a metade da segunda rolagem de
                               video: titulo e cartao se retiram e o veu se
                               dissolve. O video deixa de ser fundo de uma
                               secao e passa a ser a secao
-               .58  ate .80   ato 3 -- o corredor sozinho, em opacidade
+               .42  ate .58   ato 3 -- o corredor sozinho, em opacidade
                               cheia, ate o portal abrir
-               .80  ate 1     o portal aceso, parado. So aqui a secao solta
+               .58  ate ~.66  o portal aceso, parado
+               ~.66 ate 1     a ultima secao sobe por cima, de baixo para
+                              cima, com o portal aceso atras
 
              O cartao sai descendo e o titulo subindo: separar as direcoes
              evita que os dois virem uma coisa so sumindo, e deixa claro que
@@ -499,18 +545,20 @@ function App(){
                duracao 1 fixa a regua: agora tempo e progresso sao a mesma
                coisa, e .50 e exatamente a metade do curso. */
             .to({},{duration:1},0)
-            .to('.manifesto-type', {autoAlpha:0,y:-54,duration:.18,ease:'power2.in'},.40)
-            .to('.manifesto-media',{autoAlpha:0,y:64,scale:.93,duration:.18,ease:'power2.in'},.40)
-            .to('.mm-veu',         {opacity:0,duration:.16,ease:'power1.inOut'},.42)
+            .to('.manifesto-type', {autoAlpha:0,y:-54,duration:.13,ease:'power2.in'},.29)
+            .to('.manifesto-media',{autoAlpha:0,y:64,scale:.93,duration:.13,ease:'power2.in'},.29)
+            .to('.mm-veu',         {opacity:0,duration:.12,ease:'power1.inOut'},.31)
 
           /* E o fecho: a ultima secao nao espera o pin soltar para so
              entao comecar a se montar -- isso daria um corte seco entre o
-             portal e ela. Assim que o video fecha e o portal acende, as
-             revelacoes dela sao disparadas: elas correm durante a cauda,
-             entao quando o palco solta ela JA esta se formando, e o movimento parece continuar de uma para a outra.
+             portal e ela. Agora ela sobe fisicamente por cima do palco, entao
+             os gatilhos proprios dela disparam sozinhos durante a subida;
+             este onUpdate e so a rede, para o caso de um salto de rolagem
+             passar por cima deles. Quando o palco solta, ela JA esta
+             montada, e o movimento parece continuar de uma para a outra.
              playFinal so toca uma vez; rolar de volta nao desmonta. */
           ScrollTrigger.create({trigger:'.type-manifesto',start:'top top',end:'bottom bottom',
-            onUpdate:self=>{if(self.progress>.84)playFinal()}})
+            onUpdate:self=>{if(self.progress>.88)playFinal()}})
         }
 
         /* O brilho da borda só roda com a seção em cena. Animação
@@ -601,7 +649,9 @@ function App(){
     const safetyTimer=setTimeout(finalSafety,220)
     const redeInicial=setTimeout(abrirPresos,1400)
     return()=>{clearTimeout(safetyTimer);clearTimeout(redeInicial);clearTimeout(redeTimer)
-      removeEventListener('scroll',finalSafety);removeEventListener('scroll',rede);ctx.revert()}
+      removeEventListener('scroll',finalSafety);removeEventListener('scroll',rede)
+      removeEventListener('scroll',vigiarNav);corpo.classList.remove('nav-discreta','nav-chamada')
+      ctx.revert()}
   },[])
   const current=services[activeService]
   const activeContrast=Math.floor(contrastFrame/2),contrastSolved=contrastFrame%2===1,currentContrast=contrast[activeContrast]
