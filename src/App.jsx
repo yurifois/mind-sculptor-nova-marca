@@ -373,8 +373,81 @@ function App(){
         ai.to('.ai-copy-1',{autoAlpha:0,y:-25,duration:.7}).fromTo('.ai-copy-2',{autoAlpha:0,y:35},{autoAlpha:1,y:0,duration:.7},'<.2').to('.ai-copy-2',{autoAlpha:0,y:-25,duration:.7}).fromTo('.ai-copy-3',{autoAlpha:0,y:35},{autoAlpha:1,y:0,duration:.7},'<.2').to('.ai-sticky>img',{scale:1.07,filter:'brightness(1.18)',duration:1},0)
         gsap.fromTo('.method-route-fill',{scaleX:0},{scaleX:1,ease:'none',scrollTrigger:{trigger:'.method-system',start:'top 75%',end:'bottom 45%',scrub:perseguir}})
         gsap.utils.toArray('.method-card').forEach((el,i)=>gsap.from(el,{opacity:0,y:45,duration:.75,delay:i*.08,scrollTrigger:{trigger:el,start:'top 88%',once:true}}))
-        gsap.to('.manifesto-media',{yPercent:-12,scrollTrigger:{trigger:'.type-manifesto',start:'top bottom',end:'bottom top',scrub:perseguir}})
-        /* O feixe e o brilho da borda só rodam com a seção em cena. Animação
+        gsap.to('.manifesto-media',{yPercent:-7,scrollTrigger:{trigger:'.type-manifesto',start:'top top',end:'bottom bottom',scrub:perseguir}})
+
+        /* O CORREDOR DE LED: A SEÇÃO INTEIRA É O VÍDEO, E O SCROLL É QUEM
+           O FAZ ANDAR.
+
+           O vídeo nunca recebe play(). O progresso da seção vira
+           `currentTime`, então os LEDs vão acendendo o caminho e o portal
+           vai abrindo no ritmo em que a pessoa rola -- e rolando de volta,
+           apaga de volta, porque é a mesma linha do tempo ao contrário.
+
+           Quatro cuidados que esse arranjo exige:
+
+           CARREGAR TARDE. São 1,6 MB (910 KB no celular). Baixar isso na
+           abertura da página atrasaria o que a pessoa vê primeiro, para
+           uma seção que está a cinco rolagens de distância. O `src` só é
+           escrito quando a seção chega a duas telas de distância.
+
+           DUAS FONTES. O arquivo é 16:9. Num celular em pé, `cover`
+           jogaria fora dois terços da largura. A versão do celular é um
+           recorte 9:16 feito no ffmpeg. matchMedia decide qual baixar --
+           e decide ANTES de baixar, para nunca baixar as duas.
+
+           QUANTIZAR. Escrever `currentTime` manda o navegador procurar o
+           quadro; pedir isso 60x por segundo com valores que mal mudaram
+           é trabalho que ele faz e joga fora. O alvo é arredondado para o
+           quadro mais próximo (12fps aqui) e só vai quando muda de fato.
+
+           DESTRAVAR NO iOS. O Safari recusa mexer no tempo de um vídeo
+           que nunca tocou. O destravamento é um play/pause no primeiro
+           toque da pessoa -- um gesto de usuário, que é o que ele exige. */
+        const corredor=document.querySelector('.mm-fundo')
+        if(corredor){
+          const QUADRO=1/12
+          const fonte=matchMedia('(max-width:820px)').matches
+            ? '/video/manifesto-fundo-cel.mp4'
+            : '/video/manifesto-fundo.mp4'
+          let carregado=false,destravado=false,ultimo=-1
+          const carregar=()=>{
+            if(carregado)return
+            carregado=true
+            corredor.src=fonte
+            corredor.load()
+          }
+          const destravar=()=>{
+            if(destravado)return
+            destravado=true
+            carregar()
+            corredor.play().then(()=>corredor.pause()).catch(()=>{})
+            removeEventListener('touchstart',destravar);removeEventListener('pointerdown',destravar)
+          }
+          addEventListener('touchstart',destravar,{passive:true})
+          addEventListener('pointerdown',destravar,{passive:true})
+          ScrollTrigger.create({trigger:'.type-manifesto',start:'top bottom+=200%',once:true,onEnter:carregar,onEnterBack:carregar})
+          const andar=p=>{
+            const dur=corredor.duration
+            if(!dur||!isFinite(dur))return
+            const alvo=Math.round(p*(dur-QUADRO)/QUADRO)*QUADRO
+            if(alvo===ultimo)return
+            ultimo=alvo
+            try{corredor.currentTime=alvo}catch{/* ainda sem metadados */}
+          }
+          const passo={p:0}
+          gsap.to(passo,{p:1,ease:'none',
+            /* O curso do PIN, igual a hero: `top top` e o instante em que o
+               palco gruda na tela, `bottom bottom` e quando ele solta. Entre
+               os dois a pagina rola 120vh sem que a secao saia -- e e nesse
+               trecho que o corredor acende inteiro ate o portal. Usar a
+               travessia da secao, como antes, fazia o video ainda estar no
+               meio do caminho quando ela ja tinha ido embora. */
+            scrollTrigger:{trigger:'.type-manifesto',start:'top top',end:'bottom bottom',scrub:perseguir},
+            onUpdate(){andar(passo.p)}})
+          corredor.addEventListener('loadedmetadata',()=>{ultimo=-1;andar(passo.p)})
+        }
+
+        /* O brilho da borda só roda com a seção em cena. Animação
            em laço fora de quadro é bateria queimada sem ninguém olhando. */
         /* `cena-viva` e a chave geral das animacoes em laco: o CSS deixa
            tudo em animation-play-state:paused e so a secao em cena roda.
@@ -505,7 +578,7 @@ function App(){
   const cenaFecho=useMemo(()=><>
       <AIStory/>
       <section className="method method-v4" id="metodo"><div className="method-head" data-reveal><p className="section-label">06 / DO DIAGNÓSTICO À EVOLUÇÃO</p><h2>PROCESSO CLARO.<br/><em>SEM PEÇA SOLTA.</em></h2><p>Você enxerga o que entra, o que decidimos, o que colocamos em prática e como o trabalho evolui.</p></div><div className="method-system"><div className="method-route"><i/><b className="method-route-fill"/></div><div className="method-grid">{process.map((step,i)=><article className="method-card" key={step.n}><div className="method-card-top"><span>{step.n}</span><small>ETAPA {i+1} / 4</small></div><div className="method-node"><i/><b>{i+1}</b></div><h3>{step.title}</h3><p>{step.copy}</p><div className="method-inputs">{step.items.map(item=><span key={item}>{item}</span>)}</div><div className="method-output"><small>ENTREGA DA ETAPA</small><b>{step.output}</b></div></article>)}</div><div className="method-legend"><span><i/> ENTRADA</span><span><i/> DECISÃO</span><span><i/> ENTREGA</span><b>UM CICLO ALIMENTA O PRÓXIMO</b></div></div></section>
-      <section className="type-manifesto"><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><i className="mm-feixe" aria-hidden="true"/><i className="led" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></section>
+      <section className="type-manifesto"><div className="manifesto-palco"><video className="mm-fundo" muted playsInline preload="none" aria-hidden="true"/><i className="mm-veu" aria-hidden="true"/><div className="manifesto-type" data-reveal><div className="manifesto-line"><span>VALOR</span><b>→</b></div><div className="manifesto-line manifesto-line-amber"><span>NÃO É</span></div><div className="manifesto-line"><span>EXPLICADO.</span></div><strong>É PERCEBIDO.</strong><p>Design, mensagem e experiência fazem a mesma promessa — antes que o cliente precise perguntar.</p></div><figure className="manifesto-media"><i className="led" aria-hidden="true"/><img src="/art/traffic-routing-v3.webp" alt="Fluxo estratégico tridimensional criado para a Mind Sculptor"/><figcaption><span>MIND / ROUTE</span><b>CADA AÇÃO TEM<br/>UM DESTINO.</b></figcaption></figure></div></section>
       <section className="final-cta final-v4" id="contato"><div className="final-mark">MIND</div><div className="final-content"><div className="final-copy"><p className="section-label" data-final-reveal>07 / DIAGNÓSTICO GRATUITO</p><h2 data-final-reveal>VAMOS OLHAR<br/>O SEU NEGÓCIO<br/><em>DE PERTO.</em></h2><p data-final-reveal>Preencha os campos. A conversa segue direto no WhatsApp com quem entende do assunto — sem robô e sem funil de vendedor.</p><ul className="diagnostic-list" data-final-reveal><li><Check size={16}/>Análise do seu perfil, site e presença digital atual</li><li><Check size={16}/>Os três gargalos que mais travam sua venda hoje</li><li><Check size={16}/>Proposta com escopo e valor fechados, se fizer sentido</li><li><Check size={16}/>Zero compromisso: se não for a hora, a gente fala isso</li></ul><a className="ms-btn ms-btn-dark" href={whatsapp} target="_blank" rel="noreferrer" data-final-reveal><span>PREFIRO CHAMAR DIRETO</span><ArrowUpRight size={18}/></a><p className="direct-contact" data-final-reveal>(61) 99329-1126 · BRASÍLIA/DF · TODO O BRASIL</p></div><ContactForm/></div><footer><Brand/><span>BRASÍLIA/DF · TODO O BRASIL</span><span>© 2026 MIND SCULPTOR</span></footer></section>
   </>,[])
 

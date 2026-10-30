@@ -217,3 +217,61 @@ a[href],button,summary,select,[role="button"],
 @media(max-width:900px){
   .hero-sticky,.ai-sticky{contain:layout paint}
 }
+
+
+/* ───────────────────────────────────────────────────────────────
+   O MANIFESTO VIRA SEÇÃO PRESA
+
+   Antes a seção passava direto: o vídeo era o fundo, mas a seção
+   rolava para fora enquanto ele ainda estava no meio do caminho,
+   então o corredor nunca chegava no portal. Um vídeo que conta uma
+   progressão precisa de tempo de tela, e tempo de tela em página
+   que rola se compra com altura.
+
+   A estrutura é a mesma da hero e da seção de IA: o <section> deixa
+   de ser o lugar onde as coisas moram e passa a ser só ALTURA DE
+   ROLAGEM; quem segura o conteúdo é um palco `sticky` de uma tela.
+   Enquanto a altura do <section> passa, o palco fica parado e o
+   vídeo anda. 220vh dão 120vh de curso preso — cerca de duas
+   rolagens até o portal acender e a seção liberar.
+   ─────────────────────────────────────────────────────────────── */
+.type-manifesto{
+  position:relative!important;
+  height:220vh!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow:visible!important;
+  background:#0a0706;
+}
+.manifesto-palco{
+  position:sticky;top:0;
+  height:100svh;
+  overflow:hidden;
+  /* o padding que morava no <section> vem para cá, porque agora é
+     este elemento que tem o tamanho de uma tela.
+
+     E NADA de display:flex aqui. No celular o cartão não é absoluto:
+     o v5.css o devolve ao fluxo (`position:relative`) para ele empilhar
+     embaixo do texto. Com flex, texto e cartão viravam itens flex e
+     encolhiam ao tamanho do próprio conteúdo -- o cartão caía de 334px
+     para 146px e ia parar em cima do texto. Bloco comum mantém os dois
+     layouts, o absoluto do desktop e o empilhado do celular. */
+  padding:13vh 5vw 0;
+}
+/* o texto deixa de empurrar o card: os dois se posicionam dentro do
+   palco, o texto no fluxo e o card absoluto, como já era */
+.manifesto-palco .manifesto-type{
+  position:relative;z-index:3;
+  width:min(100%,980px);
+  padding-right:34vw;
+}
+
+@media(max-width:820px){
+  /* no celular o card vai para baixo do texto, então o palco empilha
+     e a altura presa encurta: tela estreita cansa mais rápido */
+  .type-manifesto{height:200vh!important}
+  /* no empilhado cabe menos: título + cartão somam quase uma tela, então
+     o respiro de cima encolhe para os dois caberem sem corte */
+  .manifesto-palco{padding:8vh 22px 0}
+  .manifesto-palco .manifesto-type{padding-right:0}
+}
