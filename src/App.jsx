@@ -445,6 +445,51 @@ function App(){
             scrollTrigger:{trigger:'.type-manifesto',start:'top top',end:'bottom bottom',scrub:perseguir},
             onUpdate(){andar(passo.p)}})
           corredor.addEventListener('loadedmetadata',()=>{ultimo=-1;andar(passo.p)})
+
+          /* A COREOGRAFIA DO PIN, EM TRES ATOS.
+
+             O curso preso vale 1.0 e e lido como tres rolagens, entao cada
+             rolagem e um terco. Os tempos abaixo estao nessa moeda:
+
+               0    ate .50   ato 1 -- o corredor anda com o titulo e o
+                              cartao na tela, como ate agora
+               .50  ate .72   ato 2 -- comeca na METADE DA SEGUNDA rolagem:
+                              titulo e cartao se retiram e o veu se
+                              dissolve. O video deixa de ser fundo de uma
+                              secao e passa a ser a secao
+               .72  ate 1     ato 3 -- o corredor sozinho, em opacidade
+                              cheia, ate o portal abrir
+
+             O cartao sai descendo e o titulo subindo: separar as direcoes
+             evita que os dois virem uma coisa so sumindo, e deixa claro que
+             estao dando lugar, nao apagando.
+
+             autoAlpha, e nao opacity: alem de apagar ele poe
+             `visibility:hidden`, entao o que saiu nao continua clicavel por
+             cima do video. */
+          const coreografia=gsap.timeline({
+            scrollTrigger:{trigger:'.type-manifesto',start:'top top',end:'bottom bottom',scrub:perseguir}})
+          coreografia
+            /* O espacador. Uma timeline com scrub nao e lida em fracao do
+               scroll: ela e lida em fracao da PROPRIA duracao. Sem isto a
+               duracao seria .73 (o ultimo tween acaba ali), entao o fim do
+               curso cairia no tempo .73 e tudo que marquei abaixo aconteceria
+               cedo demais -- foi o que a medicao mostrou. Um tween vazio de
+               duracao 1 fixa a regua: agora tempo e progresso sao a mesma
+               coisa, e .50 e exatamente a metade do curso. */
+            .to({},{duration:1},0)
+            .to('.manifesto-type', {autoAlpha:0,y:-54,duration:.22,ease:'power2.in'},.50)
+            .to('.manifesto-media',{autoAlpha:0,y:64,scale:.93,duration:.22,ease:'power2.in'},.50)
+            .to('.mm-veu',         {opacity:0,duration:.20,ease:'power1.inOut'},.53)
+
+          /* E o fecho: a ultima secao nao espera o pin soltar para so
+             entao comecar a se montar -- isso daria um corte seco entre o
+             portal e ela. Perto do fim do video as revelacoes dela sao
+             disparadas, entao quando o palco solta ela JA esta se
+             formando, e o movimento parece continuar de uma para a outra.
+             playFinal so toca uma vez; rolar de volta nao desmonta. */
+          ScrollTrigger.create({trigger:'.type-manifesto',start:'top top',end:'bottom bottom',
+            onUpdate:self=>{if(self.progress>.86)playFinal()}})
         }
 
         /* O brilho da borda só roda com a seção em cena. Animação
